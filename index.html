@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>PeerJS test page</title>
+
+    <link href="css/bootstrap-theme.css" rel="stylesheet">
+    <link href="css/bootstrap.css" rel="stylesheet">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script type="text/javascript" src="js/bootstrap.js"></script> 
+    <script type="text/javascript" src="peerjs/peer.js"></script>
+    <script type="text/javascript" src="js/chat.js"></script>
+</head>
+<body onunload="chatDisconnect(peer)">
+    <label id="peerID" class="label-info">Loading...</label>
+    <div class="container">
+        <form action="#" class="form-inline">
+            <p>
+                <input id="newPeer" type="text" class="form-inline"/>
+                <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
+                    Add Peer
+                </button>
+            </p>
+        </form>
+    </div>
+    <div id="chatWindow" class="container" align="right">
+        <p>
+            <textarea id="chat" class="form-control" rows="10" readonly></textarea>
+            <textarea id="messageText" class="form-control"></textarea>
+            <button type="button" id="sendMessage" class="btn-primary btn-lg">Send</button>
+        </p>
+    </div>
+    
+    <script type="text/javascript">
+        var peer, connPool = [];
+        
+        $('#sendMessage').on('click', function () {
+            var msgBox = $('#messageText');
+            var message = msgBox.val();
+
+            sendMessage(connPool, message);
+            
+            msgBox.val("");
+            msgBox.focus();
+        });
+        
+        $('#addPeer').on('click', function() {
+            var newPeer = $('#newPeer');
+            var pID = newPeer.val();
+            
+            if (pID !== "") {
+                addPeer(peer, connPool, pID);
+                newPeer.val("");
+            }
+        });
+        
+        peer = new Peer({key: 'bu7wz9uuhhmmquxr'});
+        peer.on('open', function() {
+            $('#peerID').html("Your id is: " + peer.id);
+        });
+        
+        peer.on('connection', function(conn) {
+            addPeer(peer, connPool, conn);
+        });
+    </script>
+</body>
+</html>
