@@ -42,6 +42,8 @@ function writeToChat(author, message) {
     var msg = document.createElement('code');
     $(msg).text(author + ': ' + message + '\n');
     $('#chat').append(msg);
+    // Autoscroll
+    $('#chat').scrollTop($('#chat')[0].scrollHeight);
 }
 
 /**
