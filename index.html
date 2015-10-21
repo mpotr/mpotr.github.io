@@ -48,6 +48,12 @@
             msgBox.focus();
         });
         
+        $('#messageText').on('keypress', function(e) {
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                $('#sendMessage').click();
+            }
+        });
+        
         $('#addPeer').on('click', function() {
             var newPeer = $('#newPeer');
             var pID = newPeer.val();
