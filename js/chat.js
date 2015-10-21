@@ -1,8 +1,4 @@
-/* 
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+var _id = 0;
 
 /**
  * Disconnects peer on close
@@ -22,15 +18,15 @@ function chatDisconnect(peer) {
  */
 function addPeer(peer, connPool, anotherPeer) {
     var conn;
-    
+
     // TODO: Peer replication
-    if (typeof(anotherPeer) === "string") {
+    if (typeof anotherPeer === "string") {
         // TODO: add error handling
         conn = peer.connect(anotherPeer);
     } else {
         conn = anotherPeer;
     }
-    
+
     conn.on('data', handleMessage);
     connPool.push(conn);
 
@@ -54,8 +50,32 @@ function writeToChat(author, message) {
  */
 function handleMessage(data) {
     // TODO: send ACK
-    if (data["type"] === "message") {
-        writeToChat(this.peer, data["data"]);
+    switch (data["type"]) {
+        case "msg":
+            writeToChat(this.peer, data["data"]);
+            this.send({
+                "type": "ack",
+                "id": data["id"],
+                "data": ""
+            });
+            break;
+        case "ack":
+            if (msgPool) {
+                if (msgPool[0]["chk"] || msgPool[0]["id"] === data["id"]) {
+                    writeToChat('Me', msgPool.shift()["data"]);
+                } else {
+                    for (idx in msgPool) {
+                        if (msgPool[idx]["id"] === data["id"]) {
+                            msgPool[idx]["chk"] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            break;
+        default:
+            // TODO: Something more adequate
+            alert("Error: unexpected message type");
     }
 }
 
@@ -67,12 +87,12 @@ function handleMessage(data) {
  */
 function makeSafe(str) {
     return str.replace(/</g, '&lt;').
-        replace(/>/g, '&gt;').
-        replace(/&/g, '&amp;').
-        replace(/\\/g, '&#x5c;').
-        replace(/"/g, '&quot;').
-        replace(/'/g, '&#x27;').
-        replace(/\//g, '&#x2f');
+            replace(/>/g, '&gt;').
+            replace(/&/g, '&amp;').
+            replace(/\\/g, '&#x5c;').
+            replace(/"/g, '&quot;').
+            replace(/'/g, '&#x27;').
+            replace(/\//g, '&#x2f');
 }
 
 /**
@@ -85,13 +105,15 @@ function sendMessage(connPool, message) {
     message = makeSafe(message);
 
     var data = {
-        "type": "message",
+        "type": "msg",
+        "id": _id++,
         "data": message
     };
 
     for (var idx in connPool) {
         connPool[idx].send(data);
-    };
-    
-    writeToChat('Me', message);
+
+        data["chk"] = false;
+        msgPool.push(data);
+    }
 }
