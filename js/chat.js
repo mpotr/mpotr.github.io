@@ -39,7 +39,9 @@ function addPeer(peer, connPool, anotherPeer) {
  * @param {string} message
  */
 function writeToChat(author, message) {
-    $('#chat').append(author + ': ' + message + '\n');
+    var msg = document.createElement('code');
+    $(msg).text(author + ': ' + message + '\n');
+    $('#chat').append(msg);
 }
 
 /**
@@ -102,8 +104,6 @@ function makeSafe(str) {
  * @param {string} message
  */
 function sendMessage(connPool, message) {
-    message = makeSafe(message);
-
     var data = {
         "type": "msg",
         "id": _id++,
