@@ -64,13 +64,17 @@ function handleMessage(data) {
             });
             break;
         case "ack":
-            if (msgPool) {
-                if (msgPool[0]["chk"] || msgPool[0]["id"] === data["id"]) {
+            if (msgPool.length) {
+                if (!msgPool[0]["chk"]) {
+                    // Assert
+                    if (msgPool[0]["id"] !== data["id"])
+                        alert("Unexpected message ID");
+
                     writeToChat('Me', msgPool.shift()["data"]);
                 } else {
                     for (idx in msgPool) {
                         if (msgPool[idx]["id"] === data["id"]) {
-                            msgPool[idx]["chk"] = true;
+                            --msgPool[idx]["chk"];
                             break;
                         }
                     }
@@ -111,11 +115,14 @@ function sendMessage(connPool, message) {
         "id": _id++,
         "data": message
     };
-
+    
+    // Is sendMessage always initialized?
+    data["chk"] = -1;
     for (var idx in connPool) {
         connPool[idx].send(data);
 
-        data["chk"] = false;
-        msgPool.push(data);
+        ++data["chk"];
     }
+    
+    msgPool.push(data);
 }
