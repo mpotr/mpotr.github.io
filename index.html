@@ -15,7 +15,7 @@
     <script type="text/javascript" src="peerjs/peer.js"></script>
     <script type="text/javascript" src="js/chat.js"></script>
 </head>
-<body onunload="chatDisconnect(peer)">
+<body onunload="client.chatDisconnect()">
     <label id="peerID" class="label-info">Loading...</label>
     <div class="container">
         <form action="#" class="form-inline">
@@ -35,14 +35,12 @@
         </p>
     </div>
     
-    <script type="text/javascript">
-        var peer, connPool = [], msgPool = [];
-        
+    <script type="text/javascript">        
         $('#sendMessage').on('click', function () {
             var msgBox = $('#messageText');
             var message = msgBox.val();
 
-            sendMessage(connPool, message);
+            client.sendMessage(message);
             
             msgBox.val("");
             msgBox.focus();
@@ -59,19 +57,12 @@
             var pID = newPeer.val();
             
             if (pID !== "") {
-                addPeer(peer, connPool, pID);
+                client.addPeer(pID);
                 newPeer.val("");
             }
         });
         
-        peer = new Peer({key: 'bu7wz9uuhhmmquxr'});
-        peer.on('open', function() {
-            $('#peerID').html("Your id is: " + peer.id);
-        });
-        
-        peer.on('connection', function(conn) {
-            addPeer(peer, connPool, conn);
-        });
+        client.init();
     </script>
 </body>
 </html>

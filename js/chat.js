@@ -1,37 +1,76 @@
-var _id = 0;
-
 /**
- * Disconnects peer on close
- * @param {Peer} peer Peer to disconnect
+ * @property {Peer} peer Peer object
+ * @property {Array} connPool Connections' pool
+ * @property {string} nickname Nickname used in chat
  */
-function chatDisconnect(peer) {
-    if (peer && (!peer.disconnected || !peer.destroyed)) {
-        peer.destroy();
+var client = {
+    peer: undefined,
+    connPool: [],
+    nickname: "",
+
+    /**
+     * Initialization of peer
+     */
+    init: function () {
+        this.peer = new Peer({key: 'bu7wz9uuhhmmquxr'});
+
+        this.peer.on('open', function() {
+            $('#peerID').html("Your id is: " + this.id);
+            client.nickname = this.id;
+        });
+        
+        this.peer.on('connection', function(conn) {
+            client.addPeer(conn);
+        });
+    },
+
+    /**
+    * Disconnects peer safely
+    */
+    chatDisconnect: function () {
+        if (!this.peer.disconnected || !this.peer.destroyed) {
+            this.peer.destroy();
+        }
+    },
+    
+    /**
+    * Adds peer to chat
+    * @param {DataConnection|Peer} anotherPeer New peer or established connection
+    */
+    addPeer: function (anotherPeer) {
+        var conn;
+
+        // TODO: Peer replication
+        if (typeof anotherPeer === "string") {
+            // TODO: add error handling
+            conn = this.peer.connect(anotherPeer);
+        } else {
+            conn = anotherPeer;
+        }
+
+        conn.on('data', handleMessage);
+        this.connPool.push(conn);
+    },
+    
+    /**
+    * Sends text message to peers in
+    * connPool
+    * @param {string} message
+    */
+    sendMessage: function (message) {
+        var data = {
+           "type": "msg",
+           "data": message
+        };
+
+        // Is sendMessage always initialized?
+        for (var idx in this.connPool) {
+            this.connPool[idx].send(data);
+        }
+        
+        writeToChat(this.nickname, message);
     }
-}
-
-/**
- * Adds peer to chat
- * @param {Peer} peer Client peer
- * @param {Array} connPool Connections pool
- * @param {DataConnection|Peer} anotherPeer New peer or established connection
- */
-function addPeer(peer, connPool, anotherPeer) {
-    var conn;
-
-    // TODO: Peer replication
-    if (typeof anotherPeer === "string") {
-        // TODO: add error handling
-        conn = peer.connect(anotherPeer);
-    } else {
-        conn = anotherPeer;
-    }
-
-    conn.on('data', handleMessage);
-    connPool.push(conn);
-
-    return conn;
-}
+};
 
 /**
  * Writes authorized message to chat
@@ -57,72 +96,12 @@ function handleMessage(data) {
     switch (data["type"]) {
         case "msg":
             writeToChat(this.peer, data["data"]);
-            this.send({
-                "type": "ack",
-                "id": data["id"],
-                "data": ""
-            });
             break;
         case "ack":
-            if (msgPool.length) {
-                if (!msgPool[0]["chk"]) {
-                    // Assert
-                    if (msgPool[0]["id"] !== data["id"])
-                        alert("Unexpected message ID");
-
-                    writeToChat('Me', msgPool.shift()["data"]);
-                } else {
-                    for (idx in msgPool) {
-                        if (msgPool[idx]["id"] === data["id"]) {
-                            --msgPool[idx]["chk"];
-                            break;
-                        }
-                    }
-                }
-            }
+            // Another message types
             break;
         default:
             // TODO: Something more adequate
             alert("Error: unexpected message type");
     }
-}
-
-
-/**
- * Globally replaces danger characters in str
- * @param {string} str
- * @returns {string} "safe" string
- */
-function makeSafe(str) {
-    return str.replace(/</g, '&lt;').
-            replace(/>/g, '&gt;').
-            replace(/&/g, '&amp;').
-            replace(/\\/g, '&#x5c;').
-            replace(/"/g, '&quot;').
-            replace(/'/g, '&#x27;').
-            replace(/\//g, '&#x2f');
-}
-
-/**
- * Sends text message to peers in
- * connPool
- * @param {Array} connPool
- * @param {string} message
- */
-function sendMessage(connPool, message) {
-    var data = {
-        "type": "msg",
-        "id": _id++,
-        "data": message
-    };
-    
-    // Is sendMessage always initialized?
-    data["chk"] = -1;
-    for (var idx in connPool) {
-        connPool[idx].send(data);
-
-        ++data["chk"];
-    }
-    
-    msgPool.push(data);
 }
