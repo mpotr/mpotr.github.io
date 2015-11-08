@@ -12,7 +12,7 @@ var client = {
      * Initialization of peer
      */
     init: function () {
-        this.peer = new Peer({key: 'bu7wz9uuhhmmquxr'});
+        this.peer = new Peer({key: '2bmv587i7jru23xr'});
 
         this.peer.on('open', function() {
             $('#peerID').html("Your id is: " + this.id);
@@ -57,9 +57,9 @@ var client = {
     * connPool
     * @param {string} message
     */
-    sendMessage: function (message) {
+    sendMessage: function (message, type="msg") {
         var data = {
-           "type": "msg",
+           "type": type,
            "data": message
         };
 
@@ -68,7 +68,10 @@ var client = {
             this.connPool[idx].send(data);
         }
         
-        writeToChat(this.nickname, message);
+        if (type === "msg")
+        {
+            writeToChat(this.nickname, message);
+        }
     }
 };
 
@@ -85,6 +88,8 @@ function writeToChat(author, message) {
     $('#chat').scrollTop($('#chat')[0].scrollHeight);
 }
 
+var context = new mpOTRContext(client);
+
 /**
  * Function responsible for message handling:
  * - prints message
@@ -99,6 +104,9 @@ function handleMessage(data) {
             break;
         case "ack":
             // Another message types
+            break;
+        case "mpOTR":
+            context.receive(this.peer, data["data"], client);
             break;
         default:
             // TODO: Something more adequate
