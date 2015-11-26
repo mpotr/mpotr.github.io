@@ -4,6 +4,11 @@ function log(text)
     console.log(text);
 }
 
+var peercmp = function(a, b)
+{
+    return a[1] > b[1];
+};
+
 function isObject(obj)
 {
     return obj && (typeof obj === "object");
@@ -92,10 +97,10 @@ round1.send = function(client, context)
     result["update"]["hashedNonceList"] = {};
     result["update"]["longtermPubKeys"] = {};
     result["update"]["ephPubKeys"] = {};
-    result["update"]["hashedNonceList"][client.peer] = my_k_hashed;
-    result["update"]["longtermPubKeys"][client.peer] = pub_longterm;
-    result["update"]["ephPubKeys"][client.peer] = pub_eph;
- 
+    result["update"]["hashedNonceList"][client.peer.id] = my_k_hashed;
+    result["update"]["longtermPubKeys"][client.peer.id] = pub_longterm;
+    result["update"]["ephPubKeys"][client.peer.id] = pub_eph;
+
     result["status"] = "OK";
 
     var s = "auth:0:" + my_k_hashed + ":" + pub_longterm + ":" + pub_eph;
@@ -112,7 +117,7 @@ round1.receive = function(peer, msg, context)
     result["update"]["longtermPubKeys"] = {};
     result["update"]["ephPubKeys"] = {};
     result["update"]["hashedNonceList"][peer] = msg[0];
-    result["update"]["longtermPubKeys"][peer] = msg[1];
+    result["update"]["longtermPubKeys"][peer] = new BigInteger(msg[1]);
     result["update"]["ephPubKeys"][peer] = msg[2];
     result["status"] = "OK";
 
@@ -132,10 +137,16 @@ round2.send = function(client, context)
     var sid_raw = "";
 
     var hn = context.hashedNonceList;
-    for(var i in hn) {
-        sid_raw = sid_raw + hn[i];
+    var hna = Object.keys(context.hashedNonceList);
+    // I HATE JAVASCRIPT
+    // THIS SHIT ITERATE DICT IN THE ORDER OF ADDING KEYS
+    // so sort and iterate in alphabetic order
+    // TODO: think about rewriting in array [{key1:value1}, {key2:value2}, ...]
+    hna.sort(peercmp)
+    for(var i = 0; i < hna.length; ++i) {
+        sid_raw = sid_raw + hn[hna[i]];
     };
-
+console.log("sid_raw: ", sid_raw);
     var sid = sha256.hex(sid_raw);
     result.update.sid = sid;
 
@@ -148,7 +159,7 @@ round2.send = function(client, context)
     result["status"] = "OK";
     var s = "auth:1:" + sid + ":" + exp_r_i;
     result["update"]["expAuthNonce"] = {};
-    result["update"]["expAuthNonce"][client.peer] = exp_r_i;
+    result["update"]["expAuthNonce"][client.peer.id] = exp_r_i;
     client.sendMessage(s, "mpOTR");
     this.sended = true;
     return result;
@@ -159,13 +170,13 @@ round2.receive = function(peer, msg, context)
     var result = {
         "update": {},
         "status": "OK"
-    }
+    };
     if ((msg[0] != context.sid) && (context.sid !== undefined)) // sid can be still undefined;
     {                                                           // in that case this check will fail
         result["status"] = "WRONG SESSION ID";                  // in another place. TODO: check in sid generation
     } else {
         result["update"]["expAuthNonce"] = {};
-        result["update"]["expAuthNonce"][peer] = msg[1];
+        result["update"]["expAuthNonce"][peer] = new BigInteger(msg[1]);
     }
     this.received += 1;
     return result;
@@ -174,12 +185,56 @@ round2.receive = function(peer, msg, context)
 round3 = new Round();
 round3.name = "round 3";
 
+var xor = function(a, b)
+{
+    s = "";
+    for (var i = 0; (i < a.length) && (i < b.length); ++i) {
+        var c = a.charCodeAt(i);
+        var d = b.charCodeAt(i);
+        s += String.fromCharCode(c ^ d);
+    }
+    return s;
+};
+
 round3.send = function(client, context)
 {
     var result = {
         "update": {},
         "status": "OK"
+    };
+
+    var lpk = context.longtermPubKeys;
+    var lpka = Object.keys(lpk);
+    lpka.sort(peercmp);
+    var left_pub_key;
+    var right_pub_key;
+    for (var i = 0; i < lpka.length; ++i) {
+        if (lpka[i] === client.peer.id) {
+            var num_left = i - 1;                             // URRR, -1 % 3 === -1
+            while (num_left < 0) { num_left += lpka.length; }
+            left_pub_key = lpk[lpka[num_left]];
+            right_pub_key = lpk[lpka[(i + 1) % lpka.length]];
+        }
     }
+
+    var t_left_raw = left_pub_key.modPowInt(context.myLongPrivKey.toString(), mod);
+    var t_right_raw = right_pub_key.modPowInt(context.myLongPrivKey.toString(), mod);
+    var t_left_hashed = sha256.hex(t_left_raw.toString());
+    var t_right_hashed = sha256.hex(t_right_raw.toString());
+    var bigT = xor(t_left_hashed, t_right_hashed);
+    var xoredNonce = xor(context.k_i, t_right_hashed);
+
+    result.update["my_t_left"] = t_left_hashed;
+    result.update["my_t_right"] = t_right_hashed;
+    result.update["xoredNonce"] = {};
+    result.update["xoredNonce"][client.peer.id] = xoredNonce;
+    result.update["bigT"] = {}
+    result.update["bigT"][client.peer.id] = bigT;
+    result.update["myBigT"] = bigT;
+    var s = "auth:2:" + xoredNonce + ":" + bigT;
+console.log(s);
+    client.sendMessage(s, "mpOTR");
+    this.sended = true;
 
     return result;
 }
@@ -189,8 +244,13 @@ round3.receive = function(peer, msg, context)
     var result = {
         "update": {},
         "status": "OK"
-    }
+    };
 
+    result["update"]["xoredNonce"] = {};
+    result["update"]["bigT"] = {};
+    result["update"]["xoredNonce"][peer] = msg[0];
+    result["update"]["bigT"][peer] = msg[1];
+    this.received += 1;
     return result;
 }
 
@@ -202,8 +262,63 @@ round4.send = function(client, context)
     var result = {
         "update": {},
         "status": "OK"
+    };
+// decrypt nonces here
+    xored_nonces = context.xoredNonce;
+    xored_nonces_keys = Object.keys(xored_nonces);
+    xored_nonces_keys.sort();
+    nonces = {};
+
+    var i = 0;
+    var t_R = context.my_t_right;
+    for(; xored_nonces_keys[i] != client.peer.id; ++i);
+    for(var j = i; (j - i) < xored_nonces_keys.length; ++j) {
+        var peer_name = xored_nonces_keys[(j + 1) % xored_nonces_keys.length];
+        t_R = xor(t_R, context.bigT[peer_name]);
+        nonces[peer_name] = xor(xored_nonces[peer_name], t_R);
     }
 
+    for(var i in nonces) {
+        if (sha256.hex(nonces[i]) !== context.hashedNonceList[i]) {
+            result["status"] = "NONCE HASH CHECK FAILED";
+            return result;
+        }
+        console.log(i, nonces[i], context.hashedNonceList[i]);
+    }
+
+console.log(sha256.hex(nonces[i]), xored_nonces[i]);
+    var bigTx = context.myBigT;
+    for(var i in context.bigT)
+    {
+        bigTx = xor(bigTx, context.bigT[i]);
+    }
+    if (bigTx !== context.myBigT) {
+        result["status"] = "BIG T XOR SUM IS NOT NULL";
+    }
+
+    if (result["status"] !== "OK") {
+        return result;
+    }
+
+    var n = "";
+    var sconf = "";
+    for (var i = 0; i < xored_nonces_keys.length; ++i) {
+        n += nonces[xored_nonces_keys[i]];
+        sconf += context.longtermPubKeys[i] + "," + nonce[i] + "," + context.ephPubKeys[i];
+    }
+    var c_i_raw = context.sid + sconf;
+    var c_i_hashed = sha256.hex(c_i_raw);
+    var c_i_int = new BigInteger(c_i_hashed);
+    var d_i = context.r_i.substract(context.myLongPrivKey.multiply(c_i_int).mod(mod));
+    var sig = cryptico.encrypt(c_i_hashed, context.myEphPubKey, context.myEphPrivKey);
+    result.update["sessionKey"] = n;
+    result.update["nonce"] = nonces;
+    result.update["sconf"] = sconf;
+    result.update["d_i"] = d_i;
+    result.update["sig"] = sig;
+    var s = d_i + ":" + sig;
+    client.sendMessage(s, "mpOTR");
+    this.sended = true;
     return result;
 }
 
