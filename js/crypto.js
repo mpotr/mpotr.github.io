@@ -34,7 +34,8 @@ var len_sid_random = 13;
 var keylength = "1024";
 var auth_key_length = "1024"
 var exp = "03";
-var mod = new BigInteger("239", 10); // TODO: make it BIGGER
+var qmod = new BigInteger("239", 10); // TODO: make it BIGGER
+var pmod = new BigInteger("479", 10); // TODO: make it BIGGER
 var random = new SecureRandom();
 
 
@@ -66,8 +67,9 @@ var generate_number = function()
 var generate_exp_pair = function(length)
 {
     var nn = generate_number();
-    var a = nn.mod(mod);
-    var b = a.modPowInt(parseInt(exp, 10), mod);
+    var a = nn.mod(qmod);
+    var ex = new BigInteger(exp, 10);
+    var b = ex.modPowInt(a, pmod);
     return [a, b];
 };
 
@@ -88,7 +90,7 @@ round1.send = function(client, context)
     var eph = eph_pair[0];
     var pub_eph = eph_pair[1];
 
-    result["update"] = { myLongPubKey: pub_longterm };
+    result["update"] = { "myLongPubKey": pub_longterm };
     result["update"]["myLongPrivKey"] = longterm;
     result["update"]["myEphPrivKey"] = eph;
     result["update"]["myEphPubKey"] = pub_eph;
@@ -142,11 +144,11 @@ round2.send = function(client, context)
     // THIS SHIT ITERATE DICT IN THE ORDER OF ADDING KEYS
     // so sort and iterate in alphabetic order
     // TODO: think about rewriting in array [{key1:value1}, {key2:value2}, ...]
-    hna.sort(peercmp)
+    hna.sort()
     for(var i = 0; i < hna.length; ++i) {
         sid_raw = sid_raw + hn[hna[i]];
     };
-console.log("sid_raw: ", sid_raw);
+
     var sid = sha256.hex(sid_raw);
     result.update.sid = sid;
 
@@ -205,7 +207,7 @@ round3.send = function(client, context)
 
     var lpk = context.longtermPubKeys;
     var lpka = Object.keys(lpk);
-    lpka.sort(peercmp);
+    lpka.sort();
     var left_pub_key;
     var right_pub_key;
     for (var i = 0; i < lpka.length; ++i) {
@@ -213,12 +215,13 @@ round3.send = function(client, context)
             var num_left = i - 1;                             // URRR, -1 % 3 === -1
             while (num_left < 0) { num_left += lpka.length; }
             left_pub_key = lpk[lpka[num_left]];
+            var num_right = (i + 1) % lpka.length;
             right_pub_key = lpk[lpka[(i + 1) % lpka.length]];
         }
     }
 
-    var t_left_raw = left_pub_key.modPowInt(context.myLongPrivKey.toString(), mod);
-    var t_right_raw = right_pub_key.modPowInt(context.myLongPrivKey.toString(), mod);
+    var t_left_raw = left_pub_key.modPowInt(context.myLongPrivKey.toString(), pmod);
+    var t_right_raw = right_pub_key.modPowInt(context.myLongPrivKey.toString(), pmod);
     var t_left_hashed = sha256.hex(t_left_raw.toString());
     var t_right_hashed = sha256.hex(t_right_raw.toString());
     var bigT = xor(t_left_hashed, t_right_hashed);
@@ -231,8 +234,8 @@ round3.send = function(client, context)
     result.update["bigT"] = {}
     result.update["bigT"][client.peer.id] = bigT;
     result.update["myBigT"] = bigT;
+
     var s = "auth:2:" + xoredNonce + ":" + bigT;
-console.log(s);
     client.sendMessage(s, "mpOTR");
     this.sended = true;
 
@@ -283,10 +286,8 @@ round4.send = function(client, context)
             result["status"] = "NONCE HASH CHECK FAILED";
             return result;
         }
-        console.log(i, nonces[i], context.hashedNonceList[i]);
     }
 
-console.log(sha256.hex(nonces[i]), xored_nonces[i]);
     var bigTx = context.myBigT;
     for(var i in context.bigT)
     {
@@ -302,21 +303,32 @@ console.log(sha256.hex(nonces[i]), xored_nonces[i]);
 
     var n = "";
     var sconf = "";
-    for (var i = 0; i < xored_nonces_keys.length; ++i) {
+    n += nonces[xored_nonces_keys[0]];
+    sconf += "," + context.longtermPubKeys[xored_nonces_keys[0]] + ",";
+    sconf += nonces[xored_nonces_keys[0]] + "," + context.ephPubKeys[xored_nonces_keys[0]];
+    for (var i = 1; i < xored_nonces_keys.length; ++i) {
         n += nonces[xored_nonces_keys[i]];
-        sconf += context.longtermPubKeys[i] + "," + nonce[i] + "," + context.ephPubKeys[i];
+        sconf += "," + context.longtermPubKeys[xored_nonces_keys[i]] + ",";
+        sconf += nonces[xored_nonces_keys[i]] + "," + context.ephPubKeys[xored_nonces_keys[i]];
     }
+
+    sconf = sha256.hex(sconf);
     var c_i_raw = context.sid + sconf;
     var c_i_hashed = sha256.hex(c_i_raw);
     var c_i_int = new BigInteger(c_i_hashed);
-    var d_i = context.r_i.substract(context.myLongPrivKey.multiply(c_i_int).mod(mod));
-    var sig = cryptico.encrypt(c_i_hashed, context.myEphPubKey, context.myEphPrivKey);
-    result.update["sessionKey"] = n;
+    c_i_int = c_i_int.mod(qmod);
+    c_i_hashed = c_i_int.toString();
+    var d_i = context.r_i.subtract(context.myLongPrivKey.multiply(c_i_int).mod(qmod)).mod(qmod);
+    var sig = context.myEphPrivKey.signStringWithSHA256(c_i_hashed);
+
+    result.update["sessionKey"] = sha256.hex(n);
     result.update["nonce"] = nonces;
     result.update["sconf"] = sconf;
     result.update["d_i"] = d_i;
     result.update["sig"] = sig;
-    var s = d_i + ":" + sig;
+    result.update["c_i"] = c_i_hashed;
+
+    var s = "auth:3:" + d_i + ":" + sig;
     client.sendMessage(s, "mpOTR");
     this.sended = true;
     return result;
@@ -327,8 +339,26 @@ round4.receive = function(peer, msg, context)
     var result = {
         "update": {},
         "status": "OK"
+    };
+    var ex = new BigInteger(exp, 10);
+    var d_i = new BigInteger(msg[0], 10);
+    var exp1 = ex.modPow(d_i, pmod);
+    var exp2 = context.longtermPubKeys[peer].modPowInt(context.c_i, pmod);
+    var d_check = exp1.multiply(exp2).mod(pmod);
+
+    if (d_check.toString() !== context.expAuthNonce[peer].toString()) {
+        result["status"] = "D CHECK FAILED";
+        return result;
     }
 
+    var pk = cryptico.publicKeyFromString(context.ephPubKeys[peer]);
+
+    if (!pk.verifyString(context.c_i, msg[1])) {
+        result["status"] = "SIGNATURE VERIFYING FAILED";
+        return result;
+    }
+
+    this.received += 1;
     return result;
 };
 
@@ -342,9 +372,43 @@ var process = function(context, callback)
     }
 };
 
+var sendMessage = function(context, client, text)
+{
+    var result = {
+        "status": "FAIL"
+    }
+
+    // TODO: think about keylength 64
+    var crypted_text = cryptico.encryptAESCBC(text, context.sessionKey.slice(0, 32));
+
+    var s = "TEXT:" + crypted_text;
+    client.sendMessage(s, "mpOTR");
+
+    result["status"] = "OK";
+    return result;
+}
+
+var decryptMessage = function(context, text)
+{
+    return cryptico.decryptAESCBC(text, context.sessionKey.slice(0, 32));
+}
+
 function mpOTRContext(client)
 {
     this.rounds = [round1, round2, round3, round4];
+
+    this.sendMessage = function(text) {
+        var result = sendMessage(this, client, text);
+        if (result["status"] !== "OK") {
+            log("sending message failed: ", text);
+        } else {
+            writeToChat(client.peer.id, text);
+        }
+    }
+
+    this.decryptMessage = function(text) {
+        return decryptMessage(this, text);
+    }
 
     this.receive = function(author, msg)
     {
@@ -368,24 +432,29 @@ function mpOTRContext(client)
                     process(this, function(context) {
                         return round.send(client, context);
                     });
-                } else if (client.connPool.length === round.received){
-                    if (roundNum < 4) {
+                } else if (client.connPool.length === round.received) {
+                    if (roundNum < 3) {
                         process(this, function(context) {
                             return context.rounds[roundNum + 1].send(client, context);
                         });
                     } else {
-                        log("auth end now");
+                        this.auth_done = true;
                     }
                 }
                 log(this);
                 break;
+            case "TEXT":
+                var decrypted = this.decryptMessage(msgl[1]);
+                log("got \"" + decrypted + "\" from " + author);
+                writeToChat(author, decrypted);
+                break;
             case "error":
                 //TODO: something more adequate
-                log("mpOTR error!");
+                log("mpOTR error: ", msg);
                 break;
             default:
                 //TODO: something more adequate
-                log("Unexpected mpOTR type"); 
+                log("Unexpected mpOTR type, message: ", msg); 
                 break;
         }
     }
