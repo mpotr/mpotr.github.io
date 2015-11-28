@@ -395,6 +395,8 @@ var decryptMessage = function(context, text)
 
 function mpOTRContext(client)
 {
+    this["status"] = "not started";
+
     this.rounds = [round1, round2, round3, round4];
 
     this.sendMessage = function(text) {
@@ -420,6 +422,8 @@ function mpOTRContext(client)
                     return context.rounds[0].send(client, this);
                 });
                 log("init received");
+                this["status"] = "auth";
+                $("#startmpOTR").prop("disabled", true);
                 break;
             case "auth":
                 var roundNum = parseInt(msgl[1], 10);
@@ -438,7 +442,7 @@ function mpOTRContext(client)
                             return context.rounds[roundNum + 1].send(client, context);
                         });
                     } else {
-                        this.auth_done = true;
+                        this["status"] = "chat";
                     }
                 }
                 log(this);
