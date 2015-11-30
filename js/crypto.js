@@ -1,78 +1,125 @@
+var len_sid_random = 13;
+var keylength = "1024";
+var auth_key_length = "1024";
+var exp = "03";
+var qmod = new BigInteger("239", 10); // TODO: make it BIGGER
+var pmod = new BigInteger("479", 10); // TODO: make it BIGGER
+var random = new SecureRandom();
+
+/**
+ * Simple log function
+ * @param {string} text
+ */
 function log(text)
 {
     //TODO: something more adequate
     console.log(text);
 }
 
-var peercmp = function(a, b)
-{
-    return a[1] > b[1];
-};
-
+/**
+ * Check obj for being an array or dict.
+ * Yup, dict, in JS!
+ * @param {type} obj object to be checked
+ * @returns {Boolean}
+ */
 function isObject(obj)
 {
     return obj && (typeof obj === "object");
 }
 
-function my_extend(to, from)
+/**
+ * Merges arrays and dicts.
+ * Merging depth: 2
+ * @param {Array | Dict} src
+ * @param {Array | Dict} dest
+ */
+function my_extend(src, dest)
 {
-    for (var i in from)
+    for (var key in dest)
     {
-        if ((i in to) && (isObject(to[i])))
+        if ((key in src) && (isObject(src[key])))
         {
-            for (var j in from[i])
-            {
-                to[i][j] = from[i][j];
-            }
+            $.extend(src[key], dest[key]);
+//            for (var skey in dest[dkey])
+//            {
+//                src[dkey][skey] = dest[dkey][skey];
+//            }
         } else {
-            to[i] = from[i];
+            src[key] = dest[key];
         }
     }
 }
 
-var len_sid_random = 13;
-var keylength = "1024";
-var auth_key_length = "1024"
-var exp = "03";
-var qmod = new BigInteger("239", 10); // TODO: make it BIGGER
-var pmod = new BigInteger("479", 10); // TODO: make it BIGGER
-var random = new SecureRandom();
+/**
+ * Generates RSA key pair
+ * @param {type} length Key length
+ * @returns {Array} [PrivateKey, PublicKey]
+ */
+var generatePair = function(length)
+{
+    var rsaPrivateKey = new RSAKey();
+    rsaPrivateKey.generate(length, exp);
+    var rsaPubKey = cryptico.publicKeyString(rsaPrivateKey);
+    return [rsaPrivateKey, rsaPubKey];
+};
 
+/**
+ * Generates big random number
+ * @returns {BigInteger}
+ */
+var generateNumber = function()
+{
+    var randBytes = new Array(len_sid_random);
+    random.nextBytes(randBytes);
+    return new BigInteger(randBytes);
+};
 
+/**
+ * TODO
+ * @param {type} length
+ * @returns {Array}
+ */
+var generateExpPair = function(length)
+{
+    var randBigNumber = generateNumber();
+    randBigNumber = randBigNumber.mod(qmod);
+    var ex = new BigInteger(exp, 10);
+    var b = ex.modPowInt(randBigNumber, pmod);
+    return [randBigNumber, b];
+};
+
+/**
+ * Round class.
+ * Yup, class in JS!
+ * @returns {Round}
+ */
 function Round() {}
 
-Round.prototype.send = function(client, context) { log(this.name + " send with context " + context); return {"status":"DEBUG"};}
-Round.prototype.receive = function(peer, msg, context) { log(this.name + " received from " + peer + ", msg is " + msg); return {"status":"DEBUG"}}
+Round.prototype.send = function(client, context) {
+    log(this.name + " send with context " + context); 
+    return {"status":"DEBUG"};
+};
+
+Round.prototype.receive = function(peer, msg, context) {
+    log(this.name + " received from " + peer + ", msg is " + msg); 
+    return {"status":"DEBUG"};
+};
+
+/**
+ * Indicates if round data was sended
+ * @type Boolean
+ */
 Round.prototype.sended = false;
+
+/**
+ * Number of peers that succesfully 
+ * sent us round data
+ * @type Number
+ */
 Round.prototype.received = 0;
 
 round1 = new Round();
 round1.name = "round 1";
-
-var generate_pair = function(length)
-{
-    var a = new RSAKey();
-    a.generate(length, exp);
-    var b = cryptico.publicKeyString(a);
-    return [a, b];
-}
-
-var generate_number = function()
-{
-    var a = new Array(len_sid_random);
-    random.nextBytes(a);
-    return new BigInteger(a);
-};
-
-var generate_exp_pair = function(length)
-{
-    var nn = generate_number();
-    var a = nn.mod(qmod);
-    var ex = new BigInteger(exp, 10);
-    var b = ex.modPowInt(a, pmod);
-    return [a, b];
-};
-
 round1.send = function(client, context)
 {
     var result = {};
@@ -82,11 +129,11 @@ round1.send = function(client, context)
     my_k = my_k.map(function(el){ return String.fromCharCode(el);}).join("");
     var my_k_hashed = sha256.hex(my_k);
 
-    var long_pair = generate_exp_pair(keylength);
+    var long_pair = generateExpPair(keylength);
     var longterm = long_pair[0];
     var pub_longterm = long_pair[1];
 
-    var eph_pair = generate_pair(keylength);
+    var eph_pair = generatePair(keylength);
     var eph = eph_pair[0];
     var pub_eph = eph_pair[1];
 
@@ -144,7 +191,7 @@ round2.send = function(client, context)
     // THIS SHIT ITERATE DICT IN THE ORDER OF ADDING KEYS
     // so sort and iterate in alphabetic order
     // TODO: think about rewriting in array [{key1:value1}, {key2:value2}, ...]
-    hna.sort()
+    hna.sort();
     for(var i = 0; i < hna.length; ++i) {
         sid_raw = sid_raw + hn[hna[i]];
     };
@@ -152,7 +199,7 @@ round2.send = function(client, context)
     var sid = sha256.hex(sid_raw);
     result.update.sid = sid;
 
-    var auth_pair = generate_exp_pair(auth_key_length);
+    var auth_pair = generateExpPair(auth_key_length);
     var r_i = auth_pair[0];
     var exp_r_i = auth_pair[1];
     result.update.r_i = r_i;
@@ -173,7 +220,7 @@ round2.receive = function(peer, msg, context)
         "update": {},
         "status": "OK"
     };
-    if ((msg[0] != context.sid) && (context.sid !== undefined)) // sid can be still undefined;
+    if ((msg[0] !== context.sid) && (context.sid !== undefined)) // sid can be still undefined;
     {                                                           // in that case this check will fail
         result["status"] = "WRONG SESSION ID";                  // in another place. TODO: check in sid generation
     } else {
@@ -231,7 +278,7 @@ round3.send = function(client, context)
     result.update["my_t_right"] = t_right_hashed;
     result.update["xoredNonce"] = {};
     result.update["xoredNonce"][client.peer.id] = xoredNonce;
-    result.update["bigT"] = {}
+    result.update["bigT"] = {};
     result.update["bigT"][client.peer.id] = bigT;
     result.update["myBigT"] = bigT;
 
@@ -240,7 +287,7 @@ round3.send = function(client, context)
     this.sended = true;
 
     return result;
-}
+};
 
 round3.receive = function(peer, msg, context)
 {
@@ -255,7 +302,7 @@ round3.receive = function(peer, msg, context)
     result["update"]["bigT"][peer] = msg[1];
     this.received += 1;
     return result;
-}
+};
 
 round4 = new Round();
 round4.name = "round 4";
@@ -272,9 +319,8 @@ round4.send = function(client, context)
     xored_nonces_keys.sort();
     nonces = {};
 
-    var i = 0;
     var t_R = context.my_t_right;
-    for(; xored_nonces_keys[i] != client.peer.id; ++i);
+    var i = xored_nonces_keys.indexOf(client.peer.id);
     for(var j = i; (j - i) < xored_nonces_keys.length; ++j) {
         var peer_name = xored_nonces_keys[(j + 1) % xored_nonces_keys.length];
         t_R = xor(t_R, context.bigT[peer_name]);
@@ -332,7 +378,7 @@ round4.send = function(client, context)
     client.sendMessage(s, "mpOTR");
     this.sended = true;
     return result;
-}
+};
 
 round4.receive = function(peer, msg, context)
 {
@@ -376,23 +422,29 @@ var sendMessage = function(context, client, text)
 {
     var result = {
         "status": "FAIL"
-    }
+    };
 
     // TODO: think about keylength 64
-    var crypted_text = cryptico.encryptAESCBC(text, context.sessionKey.slice(0, 32));
+    var crypted_text = cryptico.encryptAESCBC(
+            text, context.sessionKey.slice(0, 32));
 
     var s = "TEXT:" + crypted_text;
     client.sendMessage(s, "mpOTR");
 
     result["status"] = "OK";
     return result;
-}
+};
 
 var decryptMessage = function(context, text)
 {
     return cryptico.decryptAESCBC(text, context.sessionKey.slice(0, 32));
-}
+};
 
+/**
+ * Singleton for mpOTR context
+ * @param {type} client Current peer
+ * @returns {mpOTRContext}
+ */
 function mpOTRContext(client)
 {
     this["status"] = "not started";
@@ -406,17 +458,16 @@ function mpOTRContext(client)
         } else {
             writeToChat(client.peer.id, text);
         }
-    }
+    };
 
     this.decryptMessage = function(text) {
         return decryptMessage(this, text);
-    }
+    };
 
     this.receive = function(author, msg)
     {
-        var result;
-        var msgl = msg.split(":");
-        switch (msgl[0]) {
+        var msgList = msg.split(":");
+        switch (msgList[0]) {
             case "init":
                 process(this, function(context) {
                     return context.rounds[0].send(client, this);
@@ -426,10 +477,10 @@ function mpOTRContext(client)
                 $("#startmpOTR").prop("disabled", true);
                 break;
             case "auth":
-                var roundNum = parseInt(msgl[1], 10);
+                var roundNum = parseInt(msgList[1], 10);
                 var round = this.rounds[roundNum];
                 process(this, function(context) {
-                    return round.receive(author, msgl.slice(2), context);
+                    return round.receive(author, msgList.slice(2), context);
                 });
                 if (!round.sended)
                 {
@@ -448,7 +499,7 @@ function mpOTRContext(client)
                 log(this);
                 break;
             case "TEXT":
-                var decrypted = this.decryptMessage(msgl[1]);
+                var decrypted = this.decryptMessage(msgList[1]);
                 log("got \"" + decrypted + "\" from " + author);
                 writeToChat(author, decrypted);
                 break;
@@ -461,5 +512,5 @@ function mpOTRContext(client)
                 log("Unexpected mpOTR type, message: ", msg); 
                 break;
         }
-    }
+    };
 }

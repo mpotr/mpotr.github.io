@@ -57,7 +57,7 @@ var client = {
     * connPool
     * @param {string} message
     */
-    sendMessage: function (message, type="msg") {
+    sendMessage: function (message, type) {
         var data = {
            "type": type,
            "data": message
