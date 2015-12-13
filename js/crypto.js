@@ -430,8 +430,15 @@ var sendMessage = function(context, text)
         context.sessionKey.slice(0, 32)
     );
 
-    var s = "TEXT:" + encryptedText;
-    context.client.sendMessage(s, "mpOTR");
+    var data = {};
+    data["type"] = "mpOTRChat";
+    data["sid"] = context.sid;
+    data["parentsIDs"] = 0;
+    data["data"] = encryptedText;
+    data["messageID"] = 0;
+    data["sig"] = context.signMessage(data);
+
+    context.client._sendMessage(data);
 
     result["status"] = "OK";
     return result;
@@ -519,6 +526,29 @@ function mpOTRContext(client)
                 //TODO: something more adequate
                 log("alert", "Unexpected mpOTR type, message: " + msg);
                 break;
+        }
+
+        this.signMessage = function(data) {
+            return this.myEphPrivKey.signStringWithSHA256(
+                data["type"] +
+                data["sid"] +
+                data["parentsIDs"] +
+                data["data"] +
+                data["messageID"]
+            )
+        }
+
+        this.checkSig = function(data, peer) {
+            var pk = cryptico.publicKeyFromString(this.ephPubKeys[peer]);
+
+            return pk.verifyString(
+                data["type"] +
+                data["sid"] +
+                data["parentsIDs"] +
+                data["data"] +
+                data["messageID"],
+                data["sig"]
+            )
         }
     };
 }

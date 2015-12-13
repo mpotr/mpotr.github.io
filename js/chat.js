@@ -66,14 +66,23 @@ var client = {
            "data": message
         };
 
-        // Is sendMessage always initialized?
-        for (var idx in this.connPool) {
-            this.connPool[idx].send(data);
-        }
-        
+        this._sendMessage(data);
+
         if (type === "msg")
         {
             writeToChat(this.nickname, message);
+        }
+    },
+
+    /**
+     * Sends JS object to all clients in connPool
+     * Used by other sending functions
+     * @param {Object} data Object to send
+     * @private
+     */
+    _sendMessage: function (data) {
+        for (var idx in this.connPool) {
+            this.connPool[idx].send(data);
         }
     }
 };
@@ -100,15 +109,20 @@ function writeToChat(author, message) {
 function handleMessage(data) {
     // TODO: send ACK
     switch (data["type"]) {
-        case "msg":
+        case "unencrypted":
             writeToChat(this.peer, data["data"]);
-            break;
-        case "ack":
-            // Another message types
-            break;
+        break;
         case "mpOTR":
             client.context.receive(this.peer, data["data"]);
-            break;
+        break;
+        case "mpOTRChat":
+            if (!client.context.checkSig(data, this.peer)) {
+                alert("Signature checking failure!");
+            }
+            var msg = client.context.decryptMessage(data["data"]);
+            log("info", "got \"" + msg + "\" from " + this.peer);
+            writeToChat(this.peer, msg);
+        break;
         default:
             // TODO: Something more adequate
             alert("Error: unexpected message type");
