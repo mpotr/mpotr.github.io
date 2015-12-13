@@ -22,6 +22,8 @@ var client = {
         this.peer.on('connection', function(conn) {
             client.addPeer(conn);
         });
+
+        this.context = new mpOTRContext(this);
     },
 
     /**
@@ -89,8 +91,6 @@ function writeToChat(author, message) {
     $('#chat').scrollTop($('#chat')[0].scrollHeight);
 }
 
-var context = new mpOTRContext(client);
-
 /**
  * Function responsible for message handling:
  * - prints message
@@ -107,7 +107,7 @@ function handleMessage(data) {
             // Another message types
             break;
         case "mpOTR":
-            context.receive(this.peer, data["data"], client);
+            client.context.receive(this.peer, data["data"]);
             break;
         default:
             // TODO: Something more adequate

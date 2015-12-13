@@ -105,16 +105,6 @@ var generateExpPair = function(length)
  */
 function Round() {}
 
-Round.prototype.send = function(client, context) {
-    log("info", this.name + " send with context " + context);
-    return {"status":"DEBUG"};
-};
-
-Round.prototype.receive = function(peer, msg, context) {
-    log("info", this.name + " received from " + peer + ", msg is " + msg);
-    return {"status":"DEBUG"};
-};
-
 /**
  * Indicates if round data was sended
  * @type Boolean
@@ -130,7 +120,7 @@ Round.prototype.received = 0;
 
 round1 = new Round();
 round1.name = "round 1";
-round1.send = function(client, context)
+round1.send = function(context)
 {
     var result = {};
     var my_k = new Array(len_sid_random);
@@ -156,14 +146,14 @@ round1.send = function(client, context)
     result["update"]["hashedNonceList"] = {};
     result["update"]["longtermPubKeys"] = {};
     result["update"]["ephPubKeys"] = {};
-    result["update"]["hashedNonceList"][client.peer.id] = my_k_hashed;
-    result["update"]["longtermPubKeys"][client.peer.id] = pub_longterm;
-    result["update"]["ephPubKeys"][client.peer.id] = pub_eph;
+    result["update"]["hashedNonceList"][context.client.peer.id] = my_k_hashed;
+    result["update"]["longtermPubKeys"][context.client.peer.id] = pub_longterm;
+    result["update"]["ephPubKeys"][context.client.peer.id] = pub_eph;
 
     result["status"] = "OK";
 
     var s = "auth:0:" + my_k_hashed + ":" + pub_longterm + ":" + pub_eph;
-    client.sendMessage(s, "mpOTR");
+    context.client.sendMessage(s, "mpOTR");
     this.sended = true;
     return result;
 };
@@ -187,7 +177,7 @@ round1.receive = function(peer, msg, context)
 round2 = new Round();
 round2.name = "round 2";
 
-round2.send = function(client, context)
+round2.send = function(context)
 {
     var result = {
         "update": {},
@@ -202,9 +192,9 @@ round2.send = function(client, context)
     // so sort and iterate in alphabetic order
     // TODO: think about rewriting in array [{key1:value1}, {key2:value2}, ...]
     hna.sort();
-    for(var i = 0; i < hna.length; ++i) {
+    for (var i = 0; i < hna.length; ++i) {
         sid_raw = sid_raw + hn[hna[i]];
-    };
+    }
 
     var sid = sha256.hex(sid_raw);
     result.update.sid = sid;
@@ -218,8 +208,8 @@ round2.send = function(client, context)
     result["status"] = "OK";
     var s = "auth:1:" + sid + ":" + exp_r_i;
     result["update"]["expAuthNonce"] = {};
-    result["update"]["expAuthNonce"][client.peer.id] = exp_r_i;
-    client.sendMessage(s, "mpOTR");
+    result["update"]["expAuthNonce"][context.client.peer.id] = exp_r_i;
+    context.client.sendMessage(s, "mpOTR");
     this.sended = true;
     return result;
 };
@@ -255,7 +245,7 @@ var xor = function(a, b)
     return s;
 };
 
-round3.send = function(client, context)
+round3.send = function(context)
 {
     var result = {
         "update": {},
@@ -268,7 +258,7 @@ round3.send = function(client, context)
     var left_pub_key;
     var right_pub_key;
     for (var i = 0; i < lpka.length; ++i) {
-        if (lpka[i] === client.peer.id) {
+        if (lpka[i] === context.client.peer.id) {
             var num_left = i - 1;                             // URRR, -1 % 3 === -1
             while (num_left < 0) { num_left += lpka.length; }
             left_pub_key = lpk[lpka[num_left]];
@@ -287,13 +277,13 @@ round3.send = function(client, context)
     result.update["my_t_left"] = t_left_hashed;
     result.update["my_t_right"] = t_right_hashed;
     result.update["xoredNonce"] = {};
-    result.update["xoredNonce"][client.peer.id] = xoredNonce;
+    result.update["xoredNonce"][context.client.peer.id] = xoredNonce;
     result.update["bigT"] = {};
-    result.update["bigT"][client.peer.id] = bigT;
+    result.update["bigT"][context.client.peer.id] = bigT;
     result.update["myBigT"] = bigT;
 
     var s = "auth:2:" + xoredNonce + ":" + bigT;
-    client.sendMessage(s, "mpOTR");
+    context.client.sendMessage(s, "mpOTR");
     this.sended = true;
 
     return result;
@@ -317,7 +307,7 @@ round3.receive = function(peer, msg, context)
 round4 = new Round();
 round4.name = "round 4";
 
-round4.send = function(client, context)
+round4.send = function(context)
 {
     var result = {
         "update": {},
@@ -330,7 +320,7 @@ round4.send = function(client, context)
     nonces = {};
 
     var t_R = context.my_t_right;
-    var i = xored_nonces_keys.indexOf(client.peer.id);
+    var i = xored_nonces_keys.indexOf(context.client.peer.id);
     for(var j = i; (j - i) < xored_nonces_keys.length; ++j) {
         var peer_name = xored_nonces_keys[(j + 1) % xored_nonces_keys.length];
         t_R = xor(t_R, context.bigT[peer_name]);
@@ -385,7 +375,7 @@ round4.send = function(client, context)
     result.update["c_i"] = c_i_hashed;
 
     var s = "auth:3:" + d_i + ":" + sig;
-    client.sendMessage(s, "mpOTR");
+    context.client.sendMessage(s, "mpOTR");
     this.sended = true;
     return result;
 };
@@ -428,18 +418,20 @@ var process = function(context, callback)
     }
 };
 
-var sendMessage = function(context, client, text)
+var sendMessage = function(context, text)
 {
     var result = {
         "status": "FAIL"
     };
 
     // TODO: think about keylength 64
-    var crypted_text = cryptico.encryptAESCBC(
-            text, context.sessionKey.slice(0, 32));
+    var encryptedText = cryptico.encryptAESCBC(
+        text,
+        context.sessionKey.slice(0, 32)
+    );
 
-    var s = "TEXT:" + crypted_text;
-    client.sendMessage(s, "mpOTR");
+    var s = "TEXT:" + encryptedText;
+    context.client.sendMessage(s, "mpOTR");
 
     result["status"] = "OK";
     return result;
@@ -457,16 +449,22 @@ var decryptMessage = function(context, text)
  */
 function mpOTRContext(client)
 {
+    this.client = client;
     this["status"] = "not started";
 
-    this.rounds = [round1, round2, round3, round4];
+    this.rounds = [
+        round1,
+        round2,
+        round3,
+        round4
+    ];
 
     this.sendMessage = function(text) {
-        var result = sendMessage(this, client, text);
+        var result = sendMessage(this, text);
         if (result["status"] !== "OK") {
             log("alert", "sending message failed: " + text);
         } else {
-            writeToChat(client.peer.id, text);
+            writeToChat(this.client.nickname, text);
         }
     };
 
@@ -480,7 +478,7 @@ function mpOTRContext(client)
         switch (msgList[0]) {
             case "init":
                 process(this, function(context) {
-                    return context.rounds[0].send(client, this);
+                    return context.rounds[0].send(this);
                 });
                 log("info", "init received");
                 this["status"] = "auth";
@@ -495,12 +493,12 @@ function mpOTRContext(client)
                 if (!round.sended)
                 {
                     process(this, function(context) {
-                        return round.send(client, context);
+                        return round.send(context);
                     });
-                } else if (client.connPool.length === round.received) {
+                } else if (this.client.connPool.length === round.received) {
                     if (roundNum < 3) {
                         process(this, function(context) {
-                            return context.rounds[roundNum + 1].send(client, context);
+                            return context.rounds[roundNum + 1].send(context);
                         });
                     } else {
                         this["status"] = "chat";

@@ -46,7 +46,7 @@
             var message = msgBox.val();
 
             var clearFlag = true;
-            switch (context["status"]) {
+            switch (client.context["status"]) {
                 case "not started":
                     client.sendMessage(message, "msg");
                     break;
@@ -55,7 +55,7 @@
                     clearFlag = false;
                     break;
                 case "chat":
-                    context.sendMessage(message);
+                    client.context.sendMessage(message);
                     break;
                 default:
                     alert("something is wrong, write an email to developers");
