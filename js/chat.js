@@ -68,7 +68,7 @@ var client = {
 
         this._sendMessage(data);
 
-        if (type === "msg")
+        if (type === "unencrypted")
         {
             writeToChat(this.nickname, message);
         }

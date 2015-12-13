@@ -10,8 +10,7 @@ var random = new SecureRandom();
  * Simple log function
  * @param {string} msg
  */
-function log(level, msg)
-{
+function log(level, msg) {
     //TODO: something more adequate
     switch(level) {
         case "alert":
@@ -32,8 +31,7 @@ function log(level, msg)
  * @param {type} obj object to be checked
  * @returns {Boolean}
  */
-function isObject(obj)
-{
+function isObject(obj) {
     return obj && (typeof obj === "object");
 }
 
@@ -43,12 +41,9 @@ function isObject(obj)
  * @param {Array | Dict} src
  * @param {Array | Dict} dest
  */
-function my_extend(src, dest)
-{
-    for (var key in dest)
-    {
-        if ((key in src) && (isObject(src[key])))
-        {
+function my_extend(src, dest) {
+    for (var key in dest) {
+        if ((key in src) && (isObject(src[key]))) {
             $.extend(src[key], dest[key]);
 //            for (var skey in dest[dkey])
 //            {
@@ -65,8 +60,7 @@ function my_extend(src, dest)
  * @param {type} length Key length
  * @returns {Array} [PrivateKey, PublicKey]
  */
-var generatePair = function(length)
-{
+var generatePair = function(length) {
     var rsaPrivateKey = new RSAKey();
     rsaPrivateKey.generate(length, exp);
     var rsaPubKey = cryptico.publicKeyString(rsaPrivateKey);
@@ -77,8 +71,7 @@ var generatePair = function(length)
  * Generates big random number
  * @returns {BigInteger}
  */
-var generateNumber = function()
-{
+var generateNumber = function() {
     var randBytes = new Array(len_sid_random);
     random.nextBytes(randBytes);
     return new BigInteger(randBytes);
@@ -89,8 +82,7 @@ var generateNumber = function()
  * @param {type} length
  * @returns {Array}
  */
-var generateExpPair = function(length)
-{
+var generateExpPair = function(length) {
     var randBigNumber = generateNumber();
     randBigNumber = randBigNumber.mod(qmod);
     var ex = new BigInteger(exp, 10);
@@ -120,8 +112,7 @@ Round.prototype.received = 0;
 
 round1 = new Round();
 round1.name = "round 1";
-round1.send = function(context)
-{
+round1.send = function(context) {
     var result = {};
     var my_k = new Array(len_sid_random);
     random.nextBytes(my_k);
@@ -158,8 +149,7 @@ round1.send = function(context)
     return result;
 };
 
-round1.receive = function(peer, msg, context)
-{
+round1.receive = function(peer, msg, context) {
     var result = {};
     result["update"] = {};
     result["update"]["hashedNonceList"] = {};
@@ -177,8 +167,7 @@ round1.receive = function(peer, msg, context)
 round2 = new Round();
 round2.name = "round 2";
 
-round2.send = function(context)
-{
+round2.send = function(context) {
     var result = {
         "update": {},
         "status": "FAIL"
@@ -214,15 +203,16 @@ round2.send = function(context)
     return result;
 };
 
-round2.receive = function(peer, msg, context)
-{
+round2.receive = function(peer, msg, context) {
     var result = {
         "update": {},
         "status": "OK"
     };
-    if ((msg[0] !== context.sid) && (context.sid !== undefined)) // sid can be still undefined;
-    {                                                           // in that case this check will fail
-        result["status"] = "WRONG SESSION ID";                  // in another place. TODO: check in sid generation
+    if ((msg[0] !== context.sid) && (context.sid !== undefined)) {
+        // sid can be still undefined;
+        // in that case this check will fail
+        // in another place. TODO: check in sid generation
+        result["status"] = "WRONG SESSION ID";
     } else {
         result["update"]["expAuthNonce"] = {};
         result["update"]["expAuthNonce"][peer] = new BigInteger(msg[1]);
@@ -234,8 +224,7 @@ round2.receive = function(peer, msg, context)
 round3 = new Round();
 round3.name = "round 3";
 
-var xor = function(a, b)
-{
+var xor = function(a, b) {
     s = "";
     for (var i = 0; (i < a.length) && (i < b.length); ++i) {
         var c = a.charCodeAt(i);
@@ -245,8 +234,7 @@ var xor = function(a, b)
     return s;
 };
 
-round3.send = function(context)
-{
+round3.send = function(context) {
     var result = {
         "update": {},
         "status": "OK"
@@ -289,8 +277,7 @@ round3.send = function(context)
     return result;
 };
 
-round3.receive = function(peer, msg, context)
-{
+round3.receive = function(peer, msg, context) {
     var result = {
         "update": {},
         "status": "OK"
@@ -307,8 +294,7 @@ round3.receive = function(peer, msg, context)
 round4 = new Round();
 round4.name = "round 4";
 
-round4.send = function(context)
-{
+round4.send = function(context) {
     var result = {
         "update": {},
         "status": "OK"
@@ -380,8 +366,7 @@ round4.send = function(context)
     return result;
 };
 
-round4.receive = function(peer, msg, context)
-{
+round4.receive = function(peer, msg, context) {
     var result = {
         "update": {},
         "status": "OK"
@@ -408,8 +393,7 @@ round4.receive = function(peer, msg, context)
     return result;
 };
 
-var process = function(context, callback)
-{
+var process = function(context, callback) {
     var result = callback(context);
     if (result["status"] === "OK") {
         my_extend(context, result["update"]);
@@ -418,8 +402,7 @@ var process = function(context, callback)
     }
 };
 
-var sendMessage = function(context, text)
-{
+var sendMessage = function(context, text) {
     var result = {
         "status": "FAIL"
     };
@@ -444,8 +427,7 @@ var sendMessage = function(context, text)
     return result;
 };
 
-var decryptMessage = function(context, text)
-{
+var decryptMessage = function(context, text) {
     return cryptico.decryptAESCBC(text, context.sessionKey.slice(0, 32));
 };
 
@@ -454,8 +436,7 @@ var decryptMessage = function(context, text)
  * @param {Object} client Current peer
  * @returns {mpOTRContext}
  */
-function mpOTRContext(client)
-{
+function mpOTRContext(client) {
     this.client = client;
     this["status"] = "not started";
 
@@ -479,8 +460,7 @@ function mpOTRContext(client)
         return decryptMessage(this, text);
     };
 
-    this.receive = function(author, msg)
-    {
+    this.receive = function(author, msg) {
         var msgList = msg.split(":");
         switch (msgList[0]) {
             case "init":
@@ -513,11 +493,6 @@ function mpOTRContext(client)
                 }
                 log("info", this);
                 break;
-            case "TEXT":
-                var decrypted = this.decryptMessage(msgList[1]);
-                log("info", "got \"" + decrypted + "\" from " + author);
-                writeToChat(author, decrypted);
-                break;
             case "error":
                 //TODO: something more adequate
                 log("alert", "mpOTR error: " + msg);
@@ -527,28 +502,28 @@ function mpOTRContext(client)
                 log("alert", "Unexpected mpOTR type, message: " + msg);
                 break;
         }
+    };
 
-        this.signMessage = function(data) {
-            return this.myEphPrivKey.signStringWithSHA256(
-                data["type"] +
-                data["sid"] +
-                data["parentsIDs"] +
-                data["data"] +
-                data["messageID"]
-            )
-        }
+    this.signMessage = function(data) {
+        return this.myEphPrivKey.signStringWithSHA256(
+            data["type"] +
+            data["sid"] +
+            data["parentsIDs"] +
+            data["data"] +
+            data["messageID"]
+        )
+    };
 
-        this.checkSig = function(data, peer) {
-            var pk = cryptico.publicKeyFromString(this.ephPubKeys[peer]);
+    this.checkSig = function(data, peer) {
+        var pk = cryptico.publicKeyFromString(this.ephPubKeys[peer]);
 
-            return pk.verifyString(
-                data["type"] +
-                data["sid"] +
-                data["parentsIDs"] +
-                data["data"] +
-                data["messageID"],
-                data["sig"]
-            )
-        }
+        return pk.verifyString(
+            data["type"] +
+            data["sid"] +
+            data["parentsIDs"] +
+            data["data"] +
+            data["messageID"],
+            data["sig"]
+        )
     };
 }
