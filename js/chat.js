@@ -28,6 +28,7 @@ var client = {
     * Disconnects peer safely
     */
     chatDisconnect: function () {
+        // TODO: this function is outdated
         if (!this.peer.disconnected || !this.peer.destroyed) {
             this.peer.destroy();
         }

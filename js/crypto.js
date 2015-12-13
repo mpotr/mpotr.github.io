@@ -8,12 +8,22 @@ var random = new SecureRandom();
 
 /**
  * Simple log function
- * @param {string} text
+ * @param {string} msg
  */
-function log(text)
+function log(level, msg)
 {
     //TODO: something more adequate
-    console.log(text);
+    switch(level) {
+        case "alert":
+            alert(msg);
+            console.log(msg);
+        break;
+        case "info":
+            console.log(msg);
+        break;
+        default:
+            console.log(msg);
+    }
 }
 
 /**
@@ -96,12 +106,12 @@ var generateExpPair = function(length)
 function Round() {}
 
 Round.prototype.send = function(client, context) {
-    log(this.name + " send with context " + context); 
+    log("info", this.name + " send with context " + context);
     return {"status":"DEBUG"};
 };
 
 Round.prototype.receive = function(peer, msg, context) {
-    log(this.name + " received from " + peer + ", msg is " + msg); 
+    log("info", this.name + " received from " + peer + ", msg is " + msg);
     return {"status":"DEBUG"};
 };
 
@@ -414,7 +424,7 @@ var process = function(context, callback)
     if (result["status"] === "OK") {
         my_extend(context, result["update"]);
     } else {
-        log("mpOTR error: " + result["status"]); // TODO something more adequate
+        log("alert", "mpOTR error: " + result["status"]); // TODO something more adequate
     }
 };
 
@@ -442,7 +452,7 @@ var decryptMessage = function(context, text)
 
 /**
  * Singleton for mpOTR context
- * @param {type} client Current peer
+ * @param {Object} client Current peer
  * @returns {mpOTRContext}
  */
 function mpOTRContext(client)
@@ -454,7 +464,7 @@ function mpOTRContext(client)
     this.sendMessage = function(text) {
         var result = sendMessage(this, client, text);
         if (result["status"] !== "OK") {
-            log("sending message failed: ", text);
+            log("alert", "sending message failed: " + text);
         } else {
             writeToChat(client.peer.id, text);
         }
@@ -472,7 +482,7 @@ function mpOTRContext(client)
                 process(this, function(context) {
                     return context.rounds[0].send(client, this);
                 });
-                log("init received");
+                log("info", "init received");
                 this["status"] = "auth";
                 $("#startmpOTR").prop("disabled", true);
                 break;
@@ -496,20 +506,20 @@ function mpOTRContext(client)
                         this["status"] = "chat";
                     }
                 }
-                log(this);
+                log("info", this);
                 break;
             case "TEXT":
                 var decrypted = this.decryptMessage(msgList[1]);
-                log("got \"" + decrypted + "\" from " + author);
+                log("info", "got \"" + decrypted + "\" from " + author);
                 writeToChat(author, decrypted);
                 break;
             case "error":
                 //TODO: something more adequate
-                log("mpOTR error: ", msg);
+                log("alert", "mpOTR error: " + msg);
                 break;
             default:
                 //TODO: something more adequate
-                log("Unexpected mpOTR type, message: ", msg); 
+                log("alert", "Unexpected mpOTR type, message: " + msg);
                 break;
         }
     };
