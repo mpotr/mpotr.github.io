@@ -8,7 +8,8 @@ var random = new SecureRandom();
 
 /**
  * Simple log function
- * @param {string} msg
+ * @param {string} level Message level
+ * @param {string} msg Log message
  */
 function log(level, msg) {
     //TODO: something more adequate
@@ -36,10 +37,10 @@ function isObject(obj) {
 }
 
 /**
- * Merges arrays and dicts.
+ * Merges arrays and dictionaries.
  * Merging depth: 2
- * @param {Array | Dict} src
- * @param {Array | Dict} dest
+ * @param {Array | Object} src
+ * @param {Array | Object} dest
  */
 function my_extend(src, dest) {
     for (var key in dest) {
@@ -402,31 +403,6 @@ var process = function(context, callback) {
     }
 };
 
-var sendMessage = function(context, text) {
-    var result = {
-        "status": "FAIL"
-    };
-
-    // TODO: think about keylength 64
-    var encryptedText = cryptico.encryptAESCBC(
-        text,
-        context.sessionKey.slice(0, 32)
-    );
-
-    var data = {};
-    data["type"] = "mpOTRChat";
-    data["sid"] = context.sid;
-    data["parentsIDs"] = 0;
-    data["data"] = encryptedText;
-    data["messageID"] = 0;
-    data["sig"] = context.signMessage(data);
-
-    context.client._sendMessage(data);
-
-    result["status"] = "OK";
-    return result;
-};
-
 var decryptMessage = function(context, text) {
     return cryptico.decryptAESCBC(text, context.sessionKey.slice(0, 32));
 };
@@ -447,14 +423,142 @@ function mpOTRContext(client) {
         round4
     ];
 
-    this.sendMessage = function(text) {
-        var result = sendMessage(this, text);
-        if (result["status"] !== "OK") {
-            log("alert", "sending message failed: " + text);
-        } else {
-            writeToChat(this.client.nickname, text);
+    this.deliveryRequest = function () {
+        var data = {};
+        data["type"] = "mpOTRLostMessage";
+        data["from"] = this.client.peer.id;
+
+        for (var id of this.client.lostMsg) {
+            data["lostMsgID"] = id;
+            // TODO: Sign messages
+            this.client._sendMessage(data);
         }
     };
+
+    this.deliveryResponse = function (data) {
+        var idx;
+
+        // Searching in undelivered messages
+        idx = this.client.undelivered.map(function (elem) {
+            return elem["messageID"];
+        }).indexOf(data["lostMsgID"]);
+        if (idx !== -1) {
+            return this.client.undelivered[i];
+        }
+
+        // Searching in delivered messages
+        idx = this.client.delivered.map(function (elem) {
+            return elem["messageID"];
+        }).indexOf(data["lostMsgID"]);
+        if (idx !== -1) {
+            return this.client.delivered[i];
+        }
+
+        // Not found
+        return undefined;
+    }
+
+    this.sendMessage = function (text) {
+        // TODO: think about keylength 64
+        var encryptedText = cryptico.encryptAESCBC(
+            text,
+            this.sessionKey.slice(0, 32)
+        );
+
+        var data = {};
+        data["type"] = "mpOTRChat";
+        data["from"] = this.client.peer.id;
+        data["sid"] = this.sid;
+        data["data"] = encryptedText;
+        // OldBlue starts
+        data["parentsIDs"] = this.client.frontier.slice();
+        data["messageID"] = sha256.hex(
+            this.client.peer.id +
+            this.client.frontier.toString() +
+            encryptedText
+        );
+        data["sig"] = this.signMessage(data);
+        // self-deliver
+        this.receiveMessage(data);
+        // OldBlue ends
+
+        this.client._sendMessage(data);
+    };
+
+    this.receiveMessage = function (data) {
+        if (!this.checkSig(data, data["from"])) {
+            log("alert", "Signature checking failure!");
+        }
+
+        // OldBlue
+        var index = this.client.lostMsg.indexOf(data["messageID"]);
+
+        if (index > -1) {
+            this.client.lostMsg.splice(index, 1);
+        }
+
+        // Lost message delivery request
+        for (var id of data["parentsIDs"]) {
+            if (this.client.undelivered.map(function (elem) {
+                    return elem["messageID"];
+                }).indexOf(id) === -1 &&
+                this.client.delivered.map(function (elem) {
+                    return elem["messageID"];
+                }).indexOf(id) === -1) {
+                this.client.lostMsg.push(id);
+            }
+        }
+
+        this.deliveryRequest();
+
+        this.client.undelivered.push(data);
+
+        // Looking in undelivered buffer for messages that can be delivered
+        // Means all its parents was delivered
+        for (var i = this.client.undelivered.length - 1; i >= 0; --i) {
+            var candidateToDelivery = this.client.undelivered[i];
+            var canBeDelivered = true;
+
+            // Looking for parents of current message in delivered messages
+            for (var parent of candidateToDelivery["parentsIDs"]) {
+                var parentWasDelivered = false;
+
+                for (var deliveredMsg of this.client.delivered) {
+                    if (deliveredMsg["messageID"] === parent) {
+                        parentWasDelivered = true;
+                        break;
+                    }
+                }
+
+                if (!parentWasDelivered) {
+                    canBeDelivered = false;
+                    break;
+                }
+            }
+
+            if (canBeDelivered) {
+                // Removing parents from frontier
+                for (var parent of candidateToDelivery["parentsIDs"]) {
+                    var j = this.client.frontier.indexOf(parent);
+
+                    if (j > -1) {
+                        this.client.frontier.splice(j, 1);
+                    }
+                }
+                // Delivered message now in frontier
+                this.client.frontier.push(candidateToDelivery["messageID"]);
+                // And officially delivered :)
+                this.client.delivered.unshift(candidateToDelivery);
+                this.client.undelivered.splice(i, 1);
+
+                var msg = this.decryptMessage(candidateToDelivery["data"]);
+                var author = candidateToDelivery["from"];
+                writeToChat(author, msg);
+                log("info", "got \"" + msg + "\" from " + author);
+            }
+        }
+        // oldBlue ends
+    }
 
     this.decryptMessage = function(text) {
         return decryptMessage(this, text);
@@ -491,7 +595,7 @@ function mpOTRContext(client) {
                         this["status"] = "chat";
                     }
                 }
-                log("info", this);
+                log("info", this.status);
                 break;
             case "error":
                 //TODO: something more adequate

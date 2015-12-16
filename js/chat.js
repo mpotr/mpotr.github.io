@@ -7,6 +7,10 @@ var client = {
     peer: undefined,
     connPool: [],
     nickname: "",
+    frontier: [],
+    lostMsg: [],
+    delivered: [],
+    undelivered: [],
 
     /**
      * Initialization of peer
@@ -93,6 +97,7 @@ var client = {
  * @param {string} message
  */
 function writeToChat(author, message) {
+    // TODO: Add this function to client
     var msg = document.createElement('code');
     $(msg).text(author + ': ' + message + '\n');
     $('#chat').append(msg);
@@ -116,12 +121,16 @@ function handleMessage(data) {
             client.context.receive(this.peer, data["data"]);
         break;
         case "mpOTRChat":
-            if (!client.context.checkSig(data, this.peer)) {
-                alert("Signature checking failure!");
+            if (this.peer !== data["from"]) {
+                log('alert', "Senders id don't match");
             }
-            var msg = client.context.decryptMessage(data["data"]);
-            log("info", "got \"" + msg + "\" from " + this.peer);
-            writeToChat(this.peer, msg);
+            client.context.receiveMessage(data);
+        break;
+        case "mpOTRLostMessage":
+            var response = client.context.deliveryResponse(data);
+            if (response) {
+                this.send(response);
+            }
         break;
         default:
             // TODO: Something more adequate
