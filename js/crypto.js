@@ -491,6 +491,13 @@ function mpOTRContext(client) {
         }
 
         // OldBlue
+
+        // Ignore duplicates
+        if (this.client.delivered.indexOf(data) > -1 ||
+            this.client.undelivered.indexOf(data) > -1) {
+            return;
+        }
+
         var index = this.client.lostMsg.indexOf(data["messageID"]);
 
         if (index > -1) {
