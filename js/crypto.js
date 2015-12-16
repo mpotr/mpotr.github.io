@@ -430,13 +430,17 @@ function mpOTRContext(client) {
 
         for (var id of this.client.lostMsg) {
             data["lostMsgID"] = id;
-            // TODO: Sign messages
+            data['sig'] = this.signMessage(data);
+
             this.client._sendMessage(data);
         }
     };
 
     this.deliveryResponse = function (data) {
         var idx;
+        if (!this.checkSig(data, data['from'])) {
+            log('alert', "Signature check failure");
+        }
 
         // Searching in undelivered messages
         idx = this.client.undelivered.map(function (elem) {
@@ -616,25 +620,28 @@ function mpOTRContext(client) {
     };
 
     this.signMessage = function(data) {
-        return this.myEphPrivKey.signStringWithSHA256(
-            data["type"] +
-            data["sid"] +
-            data["parentsIDs"] +
-            data["data"] +
-            data["messageID"]
-        )
+        var keys = Object.keys(data);
+        keys = keys.sort();
+
+        var result = "";
+        for (var i in keys) {
+            result += data[keys[i]];
+        }
+
+        return this.myEphPrivKey.signStringWithSHA256(result);
     };
 
     this.checkSig = function(data, peer) {
         var pk = cryptico.publicKeyFromString(this.ephPubKeys[peer]);
+        var keys = Object.keys(data);
+        keys.splice(keys.indexOf('sig'), 1);
+        keys = keys.sort();
 
-        return pk.verifyString(
-            data["type"] +
-            data["sid"] +
-            data["parentsIDs"] +
-            data["data"] +
-            data["messageID"],
-            data["sig"]
-        )
+        var result = "";
+        for (var i in keys) {
+            result += data[keys[i]];
+        }
+
+        return pk.verifyString(result, data["sig"]);
     };
 }
