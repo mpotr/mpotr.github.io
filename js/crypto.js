@@ -2,8 +2,8 @@ var len_sid_random = 13;
 var keylength = "1024";
 var auth_key_length = "1024";
 var exp = "03";
-var qmod = new BigInteger("239", 10); // TODO: make it BIGGER
-var pmod = new BigInteger("479", 10); // TODO: make it BIGGER
+var qmod = new BigInteger("1205156213460516294276038011098783037428475274251229971327058470979054415841306114445046929130670807336613570738952006098251824478525291315971365353402504611531367372670536703348123007294680829887020513584624726600189364717085162921889329599071881596888429934762044470097788673059921772650773521873603874984881875042154463169647779984441228936206496905064565147296499973963182632029642323604865192473605840717232357219244260470063729922144429668263448160459816959", 10);
+var pmod = new BigInteger("2410312426921032588552076022197566074856950548502459942654116941958108831682612228890093858261341614673227141477904012196503648957050582631942730706805009223062734745341073406696246014589361659774041027169249453200378729434170325843778659198143763193776859869524088940195577346119843545301547043747207749969763750084308926339295559968882457872412993810129130294592999947926365264059284647209730384947211681434464714438488520940127459844288859336526896320919633919", 10);
 var random = new SecureRandom();
 
 /**
@@ -87,7 +87,7 @@ var generateExpPair = function(length) {
     var randBigNumber = generateNumber();
     randBigNumber = randBigNumber.mod(qmod);
     var ex = new BigInteger(exp, 10);
-    var b = ex.modPowInt(randBigNumber, pmod);
+    var b = ex.modPow(randBigNumber, pmod);
     return [randBigNumber, b];
 };
 
@@ -256,8 +256,9 @@ round3.send = function(context) {
         }
     }
 
-    var t_left_raw = left_pub_key.modPowInt(context.myLongPrivKey.toString(), pmod);
-    var t_right_raw = right_pub_key.modPowInt(context.myLongPrivKey.toString(), pmod);
+    var bigIntLPK = new BigInteger(context.myLongPrivKey.toString(), 10);
+    var t_left_raw = left_pub_key.modPow(bigIntLPK, pmod);
+    var t_right_raw = right_pub_key.modPow(bigIntLPK, pmod);
     var t_left_hashed = sha256.hex(t_left_raw.toString());
     var t_right_hashed = sha256.hex(t_right_raw.toString());
     var bigT = xor(t_left_hashed, t_right_hashed);
@@ -375,7 +376,9 @@ round4.receive = function(peer, msg, context) {
     var ex = new BigInteger(exp, 10);
     var d_i = new BigInteger(msg[0], 10);
     var exp1 = ex.modPow(d_i, pmod);
-    var exp2 = context.longtermPubKeys[peer].modPowInt(context.c_i, pmod);
+
+    var BigIntC_I = new BigInteger(context.c_i, 10);
+    var exp2 = context.longtermPubKeys[peer].modPow(BigIntC_I, pmod);
     var d_check = exp1.multiply(exp2).mod(pmod);
 
     if (d_check.toString() !== context.expAuthNonce[peer].toString()) {
