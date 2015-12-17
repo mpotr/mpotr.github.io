@@ -426,6 +426,9 @@ function mpOTRContext(client) {
         round4
     ];
 
+    this.shutdown_received = 0;
+    this.shutdown_sended = false;
+
     this.deliveryRequest = function () {
         var data = {};
         data["type"] = "mpOTRLostMessage";
@@ -650,5 +653,56 @@ function mpOTRContext(client) {
         }
 
         return pk.verifyString(result, data["sig"]);
+    };
+
+    this.sendShutdown = function() {
+        // TODO: think about keylength 64
+        secret = JSON.stringify(this.myEphPrivKey);
+        var encryptedText = cryptico.encryptAESCBC(
+            secret,
+            this.sessionKey.slice(0, 32)
+        );
+
+        var data = {};
+        data["type"] = "mpOTRShutdown";
+        data["from"] = this.client.peer.id;
+        data["sid"] = this.sid;
+        data["data"] = encryptedText;
+        data["sig"] = this.signMessage(data);
+
+        var result = {
+            "status": "OK",
+            "update": {
+                "shutdown_sended": true
+            }
+        }
+
+        this.client._sendMessage(data);
+
+        return result;
+    };
+
+    this.receiveShutdown = function(msg) {
+        if (!this.checkSig(msg, msg["from"])) {
+            log("alert", "Signature checking failure!");
+            return false;
+        }
+
+        if (!this.shutdown_sended) {
+            process(this, function(context) {
+                return context.sendShutdown();
+            });
+        }
+
+        log("info", "shutdown from " + msg["from"] + " receved: " + this.decryptMessage(msg["data"]));
+
+        this.shutdown_received += 1;
+        return this.shutdown_received === this.client.connPool.length;
+    };
+
+    this.stopChat = function() {
+        process(this, function(context) {
+            return context.sendShutdown();
+        });
     };
 }
