@@ -592,15 +592,18 @@ function mpOTRContext(client) {
             case "auth":
                 var roundNum = parseInt(msgList[1], 10);
                 var round = this.rounds[roundNum];
-                process(this, function(context) {
-                    return round.receive(author, msgList.slice(2), context);
-                });
                 if (!round.sended)
                 {
                     process(this, function(context) {
                         return round.send(context);
                     });
-                } else if (this.client.connPool.length === round.received) {
+                }
+
+                process(this, function(context) {
+                    return round.receive(author, msgList.slice(2), context);
+                });
+
+                if (this.client.connPool.length === round.received) {
                     if (roundNum < 3) {
                         process(this, function(context) {
                             return context.rounds[roundNum + 1].send(context);
@@ -609,6 +612,7 @@ function mpOTRContext(client) {
                         this["status"] = "chat";
                     }
                 }
+
                 log("info", this.status);
                 break;
             case "error":
