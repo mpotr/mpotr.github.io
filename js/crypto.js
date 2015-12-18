@@ -226,13 +226,13 @@ round3 = new Round();
 round3.name = "round 3";
 
 var xor = function(a, b) {
-    s = "";
+    var result = "";
     for (var i = 0; (i < a.length) && (i < b.length); ++i) {
         var c = a.charCodeAt(i);
         var d = b.charCodeAt(i);
-        s += String.fromCharCode(c ^ d);
+        result += String.fromCharCode(c ^ d);
     }
-    return s;
+    return result;
 };
 
 round3.send = function(context) {
@@ -406,10 +406,6 @@ var process = function(context, callback) {
     }
 };
 
-var decryptMessage = function(context, text) {
-    return cryptico.decryptAESCBC(text, context.sessionKey.slice(0, 32));
-};
-
 /**
  * Singleton for mpOTR context
  * @param {Object} client Current peer
@@ -466,7 +462,7 @@ function mpOTRContext(client) {
 
         // Not found
         return undefined;
-    }
+    };
 
     this.sendMessage = function (text) {
         // TODO: think about keylength 64
@@ -575,10 +571,10 @@ function mpOTRContext(client) {
             }
         }
         // oldBlue ends
-    }
+    };
 
     this.decryptMessage = function(text) {
-        return decryptMessage(this, text);
+        return cryptico.decryptAESCBC(text, this.sessionKey.slice(0, 32));
     };
 
     this.receive = function(author, msg) {
@@ -694,7 +690,7 @@ function mpOTRContext(client) {
             });
         }
 
-        log("info", "shutdown from " + msg["from"] + " receved: " + this.decryptMessage(msg["data"]));
+        log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
 
         this.shutdown_received += 1;
         return this.shutdown_received === this.client.connPool.length;
