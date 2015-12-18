@@ -7,12 +7,16 @@ var client = {
     peer: undefined,
     connPool: [],
     nickname: "",
+    frontier: [],
+    lostMsg: [],
+    delivered: [],
+    undelivered: [],
 
     /**
      * Initialization of peer
      */
     init: function () {
-        this.peer = new Peer({key: 'bu7wz9uuhhmmquxr'});
+        this.peer = new Peer({key: '2bmv587i7jru23xr'});
 
         this.peer.on('open', function() {
             $('#peerID').html("Your id is: " + this.id);
@@ -22,6 +26,8 @@ var client = {
         this.peer.on('connection', function(conn) {
             client.addPeer(conn);
         });
+
+        this.context = new mpOTRContext(this);
     },
 
     /**
@@ -29,7 +35,11 @@ var client = {
     */
     chatDisconnect: function () {
         if (!this.peer.disconnected || !this.peer.destroyed) {
-            this.peer.destroy();
+            this.context.stopChat();
+            // TODO: Think about validation
+            setTimeout(function() {
+                this.peer.destroy();
+            }, 2000);
         }
     },
     
@@ -57,18 +67,30 @@ var client = {
     * connPool
     * @param {string} message
     */
-    sendMessage: function (message) {
+    sendMessage: function (message, type) {
         var data = {
-           "type": "msg",
+           "type": type,
            "data": message
         };
 
-        // Is sendMessage always initialized?
+        this._sendMessage(data);
+
+        if (type === "unencrypted")
+        {
+            writeToChat(this.nickname, message);
+        }
+    },
+
+    /**
+     * Sends JS object to all clients in connPool
+     * Used by other sending functions
+     * @param {Object} data Object to send
+     * @private
+     */
+    _sendMessage: function (data) {
         for (var idx in this.connPool) {
             this.connPool[idx].send(data);
         }
-        
-        writeToChat(this.nickname, message);
     }
 };
 
@@ -78,6 +100,7 @@ var client = {
  * @param {string} message
  */
 function writeToChat(author, message) {
+    // TODO: Add this function to client
     var msg = document.createElement('code');
     $(msg).text(author + ': ' + message + '\n');
     $('#chat').append(msg);
@@ -94,12 +117,34 @@ function writeToChat(author, message) {
 function handleMessage(data) {
     // TODO: send ACK
     switch (data["type"]) {
-        case "msg":
+        case "unencrypted":
             writeToChat(this.peer, data["data"]);
-            break;
-        case "ack":
-            // Another message types
-            break;
+        break;
+        case "mpOTR":
+            client.context.receive(this.peer, data["data"]);
+        break;
+        case "mpOTRChat":
+            if (this.peer !== data["from"]) {
+                log('alert', "Senders id don't match");
+            }
+            client.context.receiveMessage(data);
+        break;
+        case "mpOTRLostMessage":
+            var response = client.context.deliveryResponse(data);
+            if (response) {
+                this.send(response);
+            }
+        break;
+        case "mpOTRShutdown":
+            if (this.peer !== data["from"]) {
+                log('alert', "Senders id don't match");
+            }
+            if (client.context.receiveShutdown(data)) {
+                //TODO: think about removing old mpOTRContext
+                client.context = new mpOTRContext(this);
+                log("info", "mpOTRContext reset");
+            }
+        break;
         default:
             // TODO: Something more adequate
             alert("Error: unexpected message type");

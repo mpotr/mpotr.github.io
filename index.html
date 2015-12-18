@@ -13,6 +13,8 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script type="text/javascript" src="js/bootstrap.js"></script> 
     <script type="text/javascript" src="peerjs/peer.js"></script>
+    <script type="text/javascript" src="cryptico/cryptico.js"></script>
+    <script type="text/javascript" src="js/crypto.js"></script>
     <script type="text/javascript" src="js/chat.js"></script>
 </head>
 <body onunload="client.chatDisconnect()">
@@ -23,6 +25,9 @@
                 <input id="newPeer" type="text" class="form-inline"/>
                 <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
                     Add Peer
+                </button>
+                <button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">
+                    start mpOTR
                 </button>
             </p>
         </form>
@@ -40,18 +45,34 @@
             var msgBox = $('#messageText');
             var message = msgBox.val();
 
-            client.sendMessage(message);
-            
-            msgBox.val("");
+            var clearFlag = true;
+            switch (client.context["status"]) {
+                case "not started":
+                    client.sendMessage(message, "unencrypted");
+                    break;
+                case "auth":
+                    alert("wait a bit and resend it plz");
+                    clearFlag = false;
+                    break;
+                case "chat":
+                    client.context.sendMessage(message);
+                    break;
+                default:
+                    alert("something is wrong, write an email to developers");
+            }
+
+            if (clearFlag) {
+                msgBox.val("");
+            }
             msgBox.focus();
         });
-        
+
         $('#messageText').on('keypress', function(e) {
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 $('#sendMessage').click();
             }
         });
-        
+
         $('#addPeer').on('click', function() {
             var newPeer = $('#newPeer');
             var pID = newPeer.val();
@@ -61,7 +82,12 @@
                 newPeer.val("");
             }
         });
-        
+
+        $("#startmpOTR").on("click", function() {
+            client.sendMessage("init", "mpOTR");
+            $("#startmpOTR").prop("disabled", true);
+        });
+
         client.init();
     </script>
 </body>
