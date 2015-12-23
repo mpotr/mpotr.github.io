@@ -10,12 +10,7 @@
     <link href="css/bootstrap-theme.css" rel="stylesheet">
     <link href="css/bootstrap.css" rel="stylesheet">
 
-    <script type="text/javascript" src="js/lib/jquery/jquery.min.js"></script>
-    <script type="text/javascript" src="js/lib/bootstrap/bootstrap.min.js"></script>
-    <script type="text/javascript" src="js/lib/peerjs/peer.js"></script>
-    <script type="text/javascript" src="js/lib/cryptico/cryptico.js"></script>
-    <script type="text/javascript" src="js/crypto.js"></script>
-    <script type="text/javascript" src="js/client.js"></script>
+    <script type="text/javascript" data-main="js/chat.js" src="js/lib/requirejs/require.min.js"></script>
 </head>
 <body onunload="client.chatDisconnect()">
     <label id="peerID" class="label-info">Loading...</label>
@@ -39,56 +34,5 @@
             <button type="button" id="sendMessage" class="btn-primary btn-lg">Send</button>
         </p>
     </div>
-    
-    <script type="text/javascript">        
-        $('#sendMessage').on('click', function () {
-            var msgBox = $('#messageText');
-            var message = msgBox.val();
-
-            var clearFlag = true;
-            switch (client.context["status"]) {
-                case "not started":
-                    client.sendMessage(message, "unencrypted");
-                    break;
-                case "auth":
-                    alert("wait a bit and resend it plz");
-                    clearFlag = false;
-                    break;
-                case "chat":
-                    client.context.sendMessage(message);
-                    break;
-                default:
-                    alert("something is wrong, write an email to developers");
-            }
-
-            if (clearFlag) {
-                msgBox.val("");
-            }
-            msgBox.focus();
-        });
-
-        $('#messageText').on('keypress', function(e) {
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                $('#sendMessage').click();
-            }
-        });
-
-        $('#addPeer').on('click', function() {
-            var newPeer = $('#newPeer');
-            var pID = newPeer.val();
-            
-            if (pID !== "") {
-                client.addPeer(pID);
-                newPeer.val("");
-            }
-        });
-
-        $("#startmpOTR").on("click", function() {
-            client.sendMessage("init", "mpOTR");
-            $("#startmpOTR").prop("disabled", true);
-        });
-
-        client.init();
-    </script>
 </body>
 </html>
