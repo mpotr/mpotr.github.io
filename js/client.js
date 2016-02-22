@@ -164,7 +164,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      * from peer.connections property
      */
     function handleDisconnect() {
-        var idx = connPool.indexOf(this);
+        var idx = client.connPool.indexOf(this);
 
         if (idx > -1) {
             client.connPool.splice(idx, 1);
