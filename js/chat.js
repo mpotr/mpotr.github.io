@@ -77,15 +77,56 @@ require(['jquery', 'client'], function($, client) {
         $('#chat').scrollTop($('#chat')[0].scrollHeight);
     }
 
-    client.init(
-        writeToChat,
-        function(id) {
-            $('#peerID').html("Your id is: " + id);
-            client.nickname = id;
-        }
-    );
+    $("#init").on("click", function () {
+        var peerID = $("#nickname").val();
 
-    client.context.on['init'] = function() {
-        $("#startmpOTR").prop("disabled", true);
-    }
+        client.init(
+            writeToChat,
+            peerID,
+            function (id) {
+                $('#peerID').html("Your id is: " + id);
+                client.nickname = id;
+            }
+        );
+
+        client.context.on['init'] = function() {
+            $("#startmpOTR").prop("disabled", true);
+        };
+
+        $("#init").prop("disabled", true);
+        $("#nickname").prop("disabled", true);
+
+        var friends = JSON.parse(localStorage[peerID]);
+
+        for (var i = 0; i < friends.length; ++i) {
+            var friend = friends[i];
+
+            $("#CLTableBody").append(
+                "<tr>" +
+                "   <td>" +
+                "       <button id='" + friend + "' class='btn-block'>" +
+                            friend +
+                "       </button>" +
+                "   </td>" +
+                "</tr>");
+
+            function callback(friend, self) {
+                return function () {
+                    client.addPeer(friend, function () {
+                        self.className = "btn-success btn-block";
+                    })
+                }
+            }
+
+            $("#" + friend).on("click", (function(friend) {
+                return function () {
+                    client.addPeer(friend, (function (self) {
+                        return function () {
+                            self.className = "btn-success btn-block";
+                        }
+                    })(this))
+                }
+            })(friend));
+        }
+    });
 });

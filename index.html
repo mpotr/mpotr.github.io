@@ -25,7 +25,7 @@
 
         .chatMessages {
             position: relative;
-            padding: 3%;
+            padding: inherit;
             width: 60%;
             height: 100%;
             display: inline-block;
@@ -34,6 +34,7 @@
 
         .chatContacts {
             position: relative;
+            padding: inherit;
             width: 35%;
             height: 100%;
             display: inline-block;
@@ -54,6 +55,14 @@
             display: inline-block;
             resize: none;
         }
+
+        .chatContactList {
+            position: relative;
+            height: 30%;
+            width: 100%;
+            overflow: hidden;
+            overflow-y: scroll;
+        }
     </style>
 </head>
 <body onunload="client.chatDisconnect()">
@@ -67,19 +76,23 @@
             </div>
         </div>
         <div class="chatContacts">
-            <div class="container">
-                <form action="#" class="form-inline">
-                    <p>
-                        <input id="newPeer" type="text" class="form-inline"/>
-                        <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
-                            Add Peer
-                        </button>
-                        <button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">
-                            start mpOTR
-                        </button>
-                    </p>
-                </form>
+            <input type="text" id="nickname">
+            <button type="button" id="init" class="btn-primary" value="Join">
+                Join
+            </button>
+            <div class="chatContactList">
+                <table style="width: 100%">
+                    <tbody id="CLTableBody">
+                    </tbody>
+                </table>
             </div>
+            <input id="newPeer" type="text"/>
+            <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
+                Add Peer
+            </button>
+            <button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">
+                start mpOTR
+            </button>
         </div>
     </div>
 </body>

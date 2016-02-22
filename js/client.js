@@ -16,12 +16,13 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         /**
          * Initialization of peer
          * @param {function} writeFunc overrides client's writeToChat
+         * @param {String} peerID Desirable peer id
          * @param {function} callback action on successful connection with peer server
          */
-        init: function (writeFunc, callback) {
+        init: function (writeFunc, peerID, callback) {
             this.writeToChat = writeFunc;
 
-            this.peer = new Peer({key: '2bmv587i7jru23xr'})
+            this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'})
                 .on('open', callback)
                 .on('connection', function (conn) {
                     client.addPeer(conn);
@@ -47,11 +48,10 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * Adds peer to connection pool
          * @param {DataConnection|Peer} anotherPeer New peer or established connection
          */
-        addPeer: function (anotherPeer) {
+        addPeer: function (anotherPeer, callback) {
             var conn;
 
             if (typeof anotherPeer === "string") {
-                // TODO: add error handling
                 if (this.peer.id === anotherPeer) {
                     return;
                 }
@@ -62,6 +62,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                     }
                 }
 
+                // TODO: add error handling
                 conn = this.peer.connect(anotherPeer);
             } else {
                 conn = anotherPeer;
@@ -71,6 +72,10 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 .on('close', handleDisconnect);
 
             this.connPool.push(conn);
+
+            if (callback) {
+                callback();
+            }
         },
 
         /**
