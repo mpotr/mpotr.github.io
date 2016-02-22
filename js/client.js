@@ -21,11 +21,11 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         init: function (writeFunc, callback) {
             this.writeToChat = writeFunc;
 
-            this.peer = new Peer({key: '2bmv587i7jru23xr'});
-            this.peer.on('open', callback);
-            this.peer.on('connection', function (conn) {
-                client.addPeer(conn);
-            });
+            this.peer = new Peer({key: '2bmv587i7jru23xr'}).
+                on('open', callback).
+                on('connection', function (conn) {
+                    client.addPeer(conn);
+                });
 
             this.context = new mpOTRContext(this);
         },
