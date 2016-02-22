@@ -44,7 +44,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         },
 
         /**
-         * Adds peer to chat
+         * Adds peer to connection pool
          * @param {DataConnection|Peer} anotherPeer New peer or established connection
          */
         addPeer: function (anotherPeer) {
@@ -58,7 +58,9 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 conn = anotherPeer;
             }
 
-            conn.on('data', handleMessage);
+            conn.on('data', handleMessage)
+                .on('close', handleDisconnect);
+
             this.connPool.push(conn);
         },
 
@@ -144,6 +146,25 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 // TODO: Something more adequate
                 alert("Error: unexpected message type");
         }
+    }
+
+    /**
+     * Function that handles disconnection of peer.
+     * Behavior depends on chat status: mpOTR or cleartext.
+     * Removes connection from connection pool and
+     * from peer.connections property
+     */
+    function handleDisconnect() {
+        var idx = connPool.indexOf(this);
+
+        if (idx > -1) {
+            client.connPool.splice(idx, 1);
+            delete client.peer.connections[this.peer];
+        }
+        // TODO: uncomment properly
+        //if (client.context.status == "chat") {
+        //    client.reconnect();
+        //}
     }
 
     return client;
