@@ -50,9 +50,18 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         addPeer: function (anotherPeer) {
             var conn;
 
-            // TODO: Peer replication
             if (typeof anotherPeer === "string") {
                 // TODO: add error handling
+                if (this.peer.id === anotherPeer) {
+                    return;
+                }
+
+                for (var i = 0; i < this.connPool.length; ++i) {
+                    if (this.connPool[i].peer === anotherPeer) {
+                        return;
+                    }
+                }
+
                 conn = this.peer.connect(anotherPeer);
             } else {
                 conn = anotherPeer;
