@@ -18,26 +18,41 @@
             padding: 3%;
             width: 90%;
             height: 90vh;
-            border: 1px solid violet;
+            border: 1px solid black;
             justify-content: space-between;
             display: flex;
         }
 
         .chatMessages {
             position: relative;
-            margin-right: 3%;
-            width: 70%;
+            padding: 3%;
+            width: 60%;
             height: 100%;
             display: inline-block;
-            border: 1px solid violet;
+            border: 1px solid black;
         }
 
         .chatContacts {
             position: relative;
-            width: 25%;
+            width: 35%;
             height: 100%;
             display: inline-block;
-            border: 1px solid violet;
+            border: 1px solid black;
+        }
+
+        .chatWindow {
+            position: relative;
+            text-align: right;
+            background-color: white;
+            height: 80%;
+        }
+
+        .chatMessageWindow {
+            position: relative;
+            text-align: left;
+            width: 90%;
+            display: inline-block;
+            resize: none;
         }
     </style>
 </head>
@@ -45,31 +60,27 @@
     <label id="peerID" class="label-info">Loading...</label>
     <div class="chat">
         <div class="chatMessages">
-            Messages
+            <pre id="chat" class="chatWindow"></pre>
+            <div style="display: flex; justify-content: space-between; position: relative; height: 10%">
+                <textarea id="messageText" class="chatMessageWindow"></textarea>
+                <button type="button" id="sendMessage" class="btn-primary">Send</button>
+            </div>
         </div>
         <div class="chatContacts">
-            Contact List
+            <div class="container">
+                <form action="#" class="form-inline">
+                    <p>
+                        <input id="newPeer" type="text" class="form-inline"/>
+                        <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
+                            Add Peer
+                        </button>
+                        <button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">
+                            start mpOTR
+                        </button>
+                    </p>
+                </form>
+            </div>
         </div>
     </div>
-    <!--<div class="container">-->
-        <!--<form action="#" class="form-inline">-->
-            <!--<p>-->
-                <!--<input id="newPeer" type="text" class="form-inline"/>-->
-                <!--<button type="button" id="addPeer" class="btn-primary" value="Add Peer">-->
-                    <!--Add Peer-->
-                <!--</button>-->
-                <!--<button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">-->
-                    <!--start mpOTR-->
-                <!--</button>-->
-            <!--</p>-->
-        <!--</form>-->
-    <!--</div>-->
-    <!--<div id="chatWindow" class="container" align="right">-->
-        <!--<pre id="chat" class="form-control" style="height:70vh;"></pre>-->
-        <!--<p>-->
-            <!--<textarea id="messageText" class="form-control"></textarea>-->
-            <!--<button type="button" id="sendMessage" class="btn-primary btn-lg">Send</button>-->
-        <!--</p>-->
-    <!--</div>-->
 </body>
 </html>
