@@ -11,28 +11,65 @@
     <link href="css/bootstrap.css" rel="stylesheet">
 
     <script type="text/javascript" data-main="js/chat.js" src="js/lib/requirejs/require.min.js"></script>
+    <style>
+        .chat {
+            position: relative;
+            margin: auto;
+            padding: 3%;
+            width: 90%;
+            height: 90vh;
+            border: 1px solid violet;
+            justify-content: space-between;
+            display: flex;
+        }
+
+        .chatMessages {
+            position: relative;
+            margin-right: 3%;
+            width: 70%;
+            height: 100%;
+            display: inline-block;
+            border: 1px solid violet;
+        }
+
+        .chatContacts {
+            position: relative;
+            width: 25%;
+            height: 100%;
+            display: inline-block;
+            border: 1px solid violet;
+        }
+    </style>
 </head>
 <body onunload="client.chatDisconnect()">
     <label id="peerID" class="label-info">Loading...</label>
-    <div class="container">
-        <form action="#" class="form-inline">
-            <p>
-                <input id="newPeer" type="text" class="form-inline"/>
-                <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
-                    Add Peer
-                </button>
-                <button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">
-                    start mpOTR
-                </button>
-            </p>
-        </form>
+    <div class="chat">
+        <div class="chatMessages">
+            Messages
+        </div>
+        <div class="chatContacts">
+            Contact List
+        </div>
     </div>
-    <div id="chatWindow" class="container" align="right">
-        <pre id="chat" class="form-control" style="height:70vh;"></pre>
-        <p>
-            <textarea id="messageText" class="form-control"></textarea>
-            <button type="button" id="sendMessage" class="btn-primary btn-lg">Send</button>
-        </p>
-    </div>
+    <!--<div class="container">-->
+        <!--<form action="#" class="form-inline">-->
+            <!--<p>-->
+                <!--<input id="newPeer" type="text" class="form-inline"/>-->
+                <!--<button type="button" id="addPeer" class="btn-primary" value="Add Peer">-->
+                    <!--Add Peer-->
+                <!--</button>-->
+                <!--<button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">-->
+                    <!--start mpOTR-->
+                <!--</button>-->
+            <!--</p>-->
+        <!--</form>-->
+    <!--</div>-->
+    <!--<div id="chatWindow" class="container" align="right">-->
+        <!--<pre id="chat" class="form-control" style="height:70vh;"></pre>-->
+        <!--<p>-->
+            <!--<textarea id="messageText" class="form-control"></textarea>-->
+            <!--<button type="button" id="sendMessage" class="btn-primary btn-lg">Send</button>-->
+        <!--</p>-->
+    <!--</div>-->
 </body>
 </html>
