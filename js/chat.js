@@ -53,7 +53,9 @@ require(['jquery', 'client'], function($, client) {
         var pID = newPeer.val();
 
         if (pID !== "") {
-            client.addPeer(pID);
+            client.addPeer(pID, function() {
+                this.friends.push(pID);
+            });
             newPeer.val("");
         }
     });
@@ -77,6 +79,42 @@ require(['jquery', 'client'], function($, client) {
         $('#chat').scrollTop($('#chat')[0].scrollHeight);
     }
 
+    function updateContactList() {
+        $("#CLTableBody > tr").remove();
+
+        for (var i = 0; i < client.friends.length; ++i) {
+            var friend = client.friends[i];
+
+            $("#CLTableBody").append(
+                "<tr>" +
+                "   <td>" +
+                "       <button id='" + friend + "' class='btn-block'>" +
+                friend +
+                "       </button>" +
+                "   </td>" +
+                "</tr>");
+
+            for (var j = 0; j < client.connPool.length; ++j) {
+                if (client.connPool[j].peer === friend) {
+                    $("#" + friend).prop("className", "btn-success btn-block");
+                    break;
+                }
+            }
+
+            $("#" + friend).on("click", (function(friend) {
+                return function () {
+                    client.addPeer(friend, (function (self) {
+                        return function () {
+                            self.className = "btn-success btn-block";
+                            updateContactList();
+                        }
+                    })(this))
+                }
+            })(friend));
+        }
+    }
+
+
     $("#init").on("click", function () {
         var peerID = $("#nickname").val();
 
@@ -96,37 +134,9 @@ require(['jquery', 'client'], function($, client) {
         $("#init").prop("disabled", true);
         $("#nickname").prop("disabled", true);
 
-        var friends = JSON.parse(localStorage[peerID]);
-
-        for (var i = 0; i < friends.length; ++i) {
-            var friend = friends[i];
-
-            $("#CLTableBody").append(
-                "<tr>" +
-                "   <td>" +
-                "       <button id='" + friend + "' class='btn-block'>" +
-                            friend +
-                "       </button>" +
-                "   </td>" +
-                "</tr>");
-
-            function callback(friend, self) {
-                return function () {
-                    client.addPeer(friend, function () {
-                        self.className = "btn-success btn-block";
-                    })
-                }
-            }
-
-            $("#" + friend).on("click", (function(friend) {
-                return function () {
-                    client.addPeer(friend, (function (self) {
-                        return function () {
-                            self.className = "btn-success btn-block";
-                        }
-                    })(this))
-                }
-            })(friend));
+        if (localStorage[peerID]) {
+            client.friends = JSON.parse(localStorage[peerID]);
+            updateContactList();
         }
     });
 });

@@ -37,6 +37,7 @@
             padding: inherit;
             width: 35%;
             height: 100%;
+            align-content: center;
             display: inline-block;
             border: 1px solid black;
         }
@@ -60,8 +61,21 @@
             position: relative;
             height: 30%;
             width: 100%;
+            margin-top: 5%;
             overflow: hidden;
             overflow-y: scroll;
+        }
+
+        .chatTextPlusButton, .chatLabelPlusButton {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            height: 10%;
+            margin: 3%;
+        }
+
+        .chatLabelPlusButton {
+            height: 30px;
         }
     </style>
 </head>
@@ -70,27 +84,31 @@
     <div class="chat">
         <div class="chatMessages">
             <pre id="chat" class="chatWindow"></pre>
-            <div style="display: flex; justify-content: space-between; position: relative; height: 10%">
+            <div class="chatTextPlusButton">
                 <textarea id="messageText" class="chatMessageWindow"></textarea>
                 <button type="button" id="sendMessage" class="btn-primary">Send</button>
             </div>
         </div>
         <div class="chatContacts">
-            <input type="text" id="nickname">
-            <button type="button" id="init" class="btn-primary" value="Join">
-                Join
-            </button>
+            <div class="chatLabelPlusButton">
+                <input type="text" id="nickname" class="chatMessageWindow">
+                <button type="button" id="init" class="btn-primary" value="Join">
+                    Join
+                </button>
+            </div>
             <div class="chatContactList">
-                <table style="width: 100%">
+                <table style="width: 100%;">
                     <tbody id="CLTableBody">
                     </tbody>
                 </table>
             </div>
-            <input id="newPeer" type="text"/>
-            <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
-                Add Peer
-            </button>
-            <button type="button" id="startmpOTR" class="btn-primary" value="start mpOTR chat now">
+            <div class="chatLabelPlusButton">
+                <input id="newPeer" type="text" class="chatMessageWindow"/>
+                <button type="button" id="addPeer" class="btn-primary" value="Add Peer">
+                    Add
+                </button>
+            </div>
+            <button type="button" id="startmpOTR" class="btn-primary chatLabelPlusButton" value="start mpOTR chat now">
                 start mpOTR
             </button>
         </div>

@@ -12,6 +12,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         lostMsg: [],
         delivered: [],
         undelivered: [],
+        friends: [],
 
         /**
          * Initialization of peer
@@ -49,7 +50,18 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * @param {DataConnection|Peer} anotherPeer New peer or established connection
          */
         addPeer: function (anotherPeer, callback) {
-            var conn;
+            var succes = (function(self) {
+                return function(conn, callback) {
+                    conn.on('data', handleMessage)
+                        .on('close', handleDisconnect);
+
+                    self.connPool.push(conn);
+
+                    if (callback) {
+                        callback();
+                    }
+                }
+            })(this);
 
             if (typeof anotherPeer === "string") {
                 if (this.peer.id === anotherPeer) {
@@ -63,18 +75,15 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }
 
                 // TODO: add error handling
-                conn = this.peer.connect(anotherPeer);
+                var conn = this.peer.connect(anotherPeer);
+                conn.on("open", (function (callback) {
+                    return function () {
+                        // Will use "this" of data connection
+                        succes(this, callback);
+                    }
+                })(callback));
             } else {
-                conn = anotherPeer;
-            }
-
-            conn.on('data', handleMessage)
-                .on('close', handleDisconnect);
-
-            this.connPool.push(conn);
-
-            if (callback) {
-                callback();
+                succes(anotherPeer, callback);
             }
         },
 
