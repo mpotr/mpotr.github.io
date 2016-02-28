@@ -56,6 +56,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                         .on('close', handleDisconnect);
 
                     self.connPool.push(conn);
+                    self.addFriend(friend);
 
                     if (callback) {
                         callback();
@@ -76,14 +77,22 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
                 // TODO: add error handling
                 var conn = this.peer.connect(anotherPeer);
-                conn.on("open", (function (callback) {
-                    return function () {
-                        // Will use "this" of data connection
-                        succes(this, callback);
-                    }
-                })(callback));
+                conn.on("open", function () {
+                    // Will use "this" of data connection
+                    succes(this, callback);
+                });
             } else {
                 succes(anotherPeer, callback);
+            }
+        },
+
+        /**
+         * Adds peer to friend list
+         * @param friend peer to add
+         */
+        addFriend: function (friend) {
+            if (this.friends.indexOf(friend) > -1) {
+                this.friends.push(friend);
             }
         },
 
