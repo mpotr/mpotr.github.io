@@ -54,7 +54,7 @@ require(['jquery', 'client'], function($, client) {
 
         if (pID !== "") {
             client.addPeer(pID, function() {
-                this.friends.push(pID);
+                client.friends.push(pID);
             });
             newPeer.val("");
         }

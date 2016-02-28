@@ -56,7 +56,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                         .on('close', handleDisconnect);
 
                     self.connPool.push(conn);
-                    self.addFriend(friend);
+                    self.addFriend(conn.peer);
 
                     if (callback) {
                         callback();
