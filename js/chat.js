@@ -53,9 +53,7 @@ require(['jquery', 'client'], function($, client) {
         var pID = newPeer.val();
 
         if (pID !== "") {
-            client.addPeer(pID, function() {
-                client.friends.push(pID);
-            });
+            client.addPeer(pID);
             newPeer.val("");
         }
     });
@@ -81,6 +79,7 @@ require(['jquery', 'client'], function($, client) {
 
     function updateContactList() {
         $("#CLTableBody > tr").remove();
+        localStorage[client.peer.id] = JSON.stringify(client.friends);
 
         for (var i = 0; i < client.friends.length; ++i) {
             var friend = client.friends[i];
@@ -103,12 +102,7 @@ require(['jquery', 'client'], function($, client) {
 
             $("#" + friend).on("click", (function(friend) {
                 return function () {
-                    client.addPeer(friend, (function (self) {
-                        return function () {
-                            self.className = "btn-success btn-block";
-                            updateContactList();
-                        }
-                    })(this))
+                    client.addPeer(friend);
                 }
             })(friend));
         }
@@ -119,13 +113,16 @@ require(['jquery', 'client'], function($, client) {
         var peerID = $("#nickname").val();
 
         client.init(
-            writeToChat,
             peerID,
-            function (id) {
-                $('#peerID').html("Your id is: " + id);
-                client.nickname = id;
-            }
-        );
+            writeToChat,
+            {
+                open: function (id) {
+                    $('#peerID').html("Your id is: " + id);
+                    client.nickname = id;
+                },
+                add: updateContactList,
+                close: updateContactList
+            });
 
         client.context.on['init'] = function() {
             $("#startmpOTR").prop("disabled", true);

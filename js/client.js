@@ -13,18 +13,20 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         delivered: [],
         undelivered: [],
         friends: [],
+        on: {},
 
         /**
          * Initialization of peer
-         * @param {function} writeFunc overrides client's writeToChat
-         * @param {String} peerID Desirable peer id
-         * @param {function} callback action on successful connection with peer server
+         * @param peerID {String} Desirable peer id
+         * @param writeFunc {function} overrides client's writeToChat
+         * @param callbacks {Object} callbacks on peer open, add, disconnect
          */
-        init: function (writeFunc, peerID, callback) {
+        init: function (peerID, writeFunc, callbacks) {
             this.writeToChat = writeFunc;
+            this.on = callbacks;
 
             this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'})
-                .on('open', callback)
+                .on('open', this.on["open"])
                 .on('connection', function (conn) {
                     client.addPeer(conn);
                 });
@@ -49,17 +51,19 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * Adds peer to connection pool
          * @param {DataConnection|Peer} anotherPeer New peer or established connection
          */
-        addPeer: function (anotherPeer, callback) {
-            var succes = (function(self) {
-                return function(conn, callback) {
+        addPeer: function (anotherPeer) {
+            var success = (function(self) {
+                return function(conn) {
                     conn.on('data', handleMessage)
-                        .on('close', handleDisconnect);
+                        .on('close', function() {
+                            handleDisconnect(this, self.on["close"]);
+                        });
 
                     self.connPool.push(conn);
                     self.addFriend(conn.peer);
 
-                    if (callback) {
-                        callback();
+                    if (self.on["add"]) {
+                        self.on["add"]();
                     }
                 }
             })(this);
@@ -79,10 +83,10 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 var conn = this.peer.connect(anotherPeer);
                 conn.on("open", function () {
                     // Will use "this" of data connection
-                    succes(this, callback);
+                    success(this);
                 });
             } else {
-                succes(anotherPeer, callback);
+                success(anotherPeer);
             }
         },
 
@@ -91,7 +95,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * @param friend peer to add
          */
         addFriend: function (friend) {
-            if (this.friends.indexOf(friend) > -1) {
+            if (this.friends.indexOf(friend) === -1) {
                 this.friends.push(friend);
             }
         },
@@ -186,12 +190,16 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      * Removes connection from connection pool and
      * from peer.connections property
      */
-    function handleDisconnect() {
-        var idx = client.connPool.indexOf(this);
+    function handleDisconnect(conn, callback) {
+        var idx = client.connPool.indexOf(conn);
 
         if (idx > -1) {
             client.connPool.splice(idx, 1);
-            delete client.peer.connections[this.peer];
+            delete client.peer.connections[conn.peer];
+        }
+
+        if (callback) {
+            callback();
         }
         // TODO: uncomment properly
         //if (client.context.status == "chat") {
