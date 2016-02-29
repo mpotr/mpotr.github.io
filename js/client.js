@@ -158,7 +158,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 break;
             case "mpOTRChat":
                 if (this.peer !== data["from"]) {
-                    log('alert', "Senders id don't match");
+                    console.log('alert', "Senders id don't match");
                 }
                 client.context.receiveMessage(data);
                 break;
@@ -170,12 +170,12 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 break;
             case "mpOTRShutdown":
                 if (this.peer !== data["from"]) {
-                    log('alert', "Senders id don't match");
+                    console.log('alert', "Senders id don't match");
                 }
                 if (client.context.receiveShutdown(data)) {
                     //TODO: think about removing old mpOTRContext
                     client.context = new mpOTRContext(this);
-                    log("info", "mpOTRContext reset");
+                    console.log("info", "mpOTRContext reset");
                 }
                 break;
             default:
