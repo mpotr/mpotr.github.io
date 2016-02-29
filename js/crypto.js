@@ -470,7 +470,6 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.sendMessage = function (text) {
-            text = btoa(escape(text));
             // TODO: think about keylength 64
             var encryptedText = cryptico.encryptAESCBC(
                 text,
@@ -571,7 +570,6 @@ define(['jquery', 'cryptico'], function($) {
                     this.client.undelivered.splice(i, 1);
 
                     var msg = this.decryptMessage(candidateToDelivery["data"]);
-                    msg = unescape(atob(msg));
                     var author = candidateToDelivery["from"];
                     this.client.writeToChat(author, msg);
                     log("info", "got \"" + msg + "\" from " + author);

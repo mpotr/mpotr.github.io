@@ -18,7 +18,7 @@ require.config({
 require(['jquery', 'client'], function($, client) {
     $('#sendMessage').on('click', function () {
         var msgBox = $('#messageText');
-        var message = msgBox.val();
+        var message = escape(msgBox.val());
 
         var clearFlag = true;
         switch (client.context["status"]) {
@@ -71,7 +71,7 @@ require(['jquery', 'client'], function($, client) {
     function writeToChat(author, message) {
         // TODO: Add this function to client
         var msg = document.createElement('code');
-        $(msg).text(author + ': ' + message + '\n');
+        $(msg).text(author + ': ' + unescape(message) + '\n');
         $('#chat').append(msg);
         // Autoscroll
         $('#chat').scrollTop($('#chat')[0].scrollHeight);
