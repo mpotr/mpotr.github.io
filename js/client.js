@@ -173,8 +173,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                     console.log('alert', "Senders id don't match");
                 }
                 if (client.context.receiveShutdown(data)) {
-                    //TODO: think about removing old mpOTRContext
-                    client.context = new mpOTRContext(this);
+                    client.context.on.shutdown();
                     console.log("info", "mpOTRContext reset");
                 }
                 break;

@@ -113,6 +113,14 @@ define(['jquery', 'cryptico'], function($) {
      */
     Round.prototype.received = 0;
 
+    /**
+     * Method to reset all Round settings
+     */
+    Round.prototype.reset = function() {
+        this.sended = false;
+        this.received = 0;
+    }
+
     round1 = new Round();
     round1.name = "round 1";
     round1.send = function (context) {
@@ -427,8 +435,33 @@ define(['jquery', 'cryptico'], function($) {
             round4
         ];
 
-        this.shutdown_received = 0;
-        this.shutdown_sended = false;
+        this.reset = function () {
+            this["status"] = "not started";
+            this.shutdown_received = 0;
+            this.shutdown_sended = false;
+            this.myLongPubKey = undefined;
+            this.myLongPrivKey = undefined;
+            this.myEphPrivKey = undefined;
+            this.myEphPubKey = undefined;
+            this.k_i = undefined;
+            this.hashedNonceList = {};
+            this.longtermPubKeys = {};
+            this.ephPubKeys = {};
+            this.expAuthNonce = {};
+            this.my_t_left = undefined;
+            this.my_t_right = undefined;
+            this.xoredNonce = {};
+            this.bigT = {};
+            this.myBigT = undefined;
+            this.sessionKey = undefined;
+            this.nonce = undefined;
+            this.sconf = undefined;
+            this.d_i = undefined;
+            this.sig = undefined;
+            this.c_i = undefined;
+            $.map(this.rounds, function(x) { x.reset(); });
+        };
+        this.reset();
 
         this.deliveryRequest = function () {
             var data = {};
@@ -683,6 +716,9 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.receiveShutdown = function (msg) {
+            if (this["status"] == "not started") {
+                return false;
+            }
             if (!this.checkSig(msg, msg["from"])) {
                 log("alert", "Signature checking failure!");
                 return false;
@@ -710,7 +746,8 @@ define(['jquery', 'cryptico'], function($) {
          * Events handling. For future using
          */
         this.on = {
-            init: function () {}
+            init: function () {},
+            shutdown: function () {}
         }
     }
 

@@ -58,9 +58,14 @@ require(['jquery', 'client'], function($, client) {
         }
     });
 
-    $("#startmpOTR").on("click", function() {
-        client.sendMessage("init", "mpOTR");
-        $("#startmpOTR").prop("disabled", true);
+    $("#mpOTR").on("click", function() {
+        if ($("#mpOTR").text() === "stop mpOTR") {
+            client.context.sendShutdown();
+            $("#mpOTR").text("start mpOTR");
+        } else {
+            client.sendMessage("init", "mpOTR");
+            $("#mpOTR").text("stop mpOTR");
+        }
     });
 
     /**
@@ -125,8 +130,12 @@ require(['jquery', 'client'], function($, client) {
             });
 
         client.context.on['init'] = function() {
-            $("#startmpOTR").prop("disabled", true);
-        };
+            $("#mpOTR").text("stop mpOTR");
+        }
+        client.context.on['shutdown'] = function() {
+            $("#mpOTR").text("start mpOTR");
+            client.context.reset();
+        }
 
         $("#init").prop("disabled", true);
         $("#nickname").prop("disabled", true);
