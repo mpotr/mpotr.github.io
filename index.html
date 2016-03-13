@@ -79,7 +79,7 @@
         }
     </style>
 </head>
-<body onunload="client.chatDisconnect()">
+<body onunload="var client; if (client) { client.chatDisconnect(); }">
     <label id="peerID" class="label-info">Loading...</label>
     <div class="chat">
         <div class="chatMessages">
@@ -108,7 +108,7 @@
                     Add
                 </button>
             </div>
-            <button type="button" id="startmpOTR" class="btn-primary chatLabelPlusButton" value="start mpOTR chat now">
+            <button type="button" id="mpOTR" class="btn-primary chatLabelPlusButton" value="change mpOTR state">
                 start mpOTR
             </button>
         </div>
