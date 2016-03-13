@@ -1,4 +1,6 @@
 define(['crypto', 'peerjs'], function(mpOTRContext) {
+    "use strict";
+
     /**
      * @property {Peer} peer Peer object
      * @property {Array} connPool Connections' pool
@@ -32,6 +34,13 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 });
 
             this.context = new mpOTRContext(this);
+
+            this.context.subscribeOnEvent('shutdown', function() {
+                client.frontier = [];
+                client.lostMsg = [];
+                client.delivered = [];
+                client.undelivered = [];
+            });
         },
 
         /**
@@ -73,7 +82,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                     return;
                 }
 
-                for (var i = 0; i < this.connPool.length; ++i) {
+                for (let i = 0; i < this.connPool.length; ++i) {
                     if (this.connPool[i].peer === anotherPeer) {
                         return;
                     }
@@ -125,7 +134,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * @private
          */
         _sendMessage: function (data) {
-            for (var idx in this.connPool) {
+            for (let idx in this.connPool) {
                 this.connPool[idx].send(data);
             }
         },
@@ -173,7 +182,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                     console.log('alert', "Senders id don't match");
                 }
                 if (client.context.receiveShutdown(data)) {
-                    client.context.on.shutdown();
+                    client.context.emitEvent('shutdown');
                     console.log("info", "mpOTRContext reset");
                 }
                 break;

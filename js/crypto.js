@@ -1,4 +1,6 @@
 define(['jquery', 'cryptico'], function($) {
+    "use strict";
+
     var len_sid_random = 13;
     var keylength = "1024";
     var auth_key_length = "1024";
@@ -119,9 +121,9 @@ define(['jquery', 'cryptico'], function($) {
     Round.prototype.reset = function() {
         this.sended = false;
         this.received = 0;
-    }
+    };
 
-    round1 = new Round();
+    var round1 = new Round();
     round1.name = "round 1";
     round1.send = function (context) {
         var result = {};
@@ -177,7 +179,7 @@ define(['jquery', 'cryptico'], function($) {
         return result;
     };
 
-    round2 = new Round();
+    var round2 = new Round();
     round2.name = "round 2";
 
     round2.send = function (context) {
@@ -234,7 +236,7 @@ define(['jquery', 'cryptico'], function($) {
         return result;
     };
 
-    round3 = new Round();
+    var round3 = new Round();
     round3.name = "round 3";
 
     var xor = function (a, b) {
@@ -307,7 +309,7 @@ define(['jquery', 'cryptico'], function($) {
         return result;
     };
 
-    round4 = new Round();
+    var round4 = new Round();
     round4.name = "round 4";
 
     round4.send = function (context) {
@@ -316,10 +318,10 @@ define(['jquery', 'cryptico'], function($) {
             "status": "OK"
         };
         // decrypt nonces here
-        xored_nonces = context.xoredNonce;
-        xored_nonces_keys = Object.keys(xored_nonces);
+        var xored_nonces = context.xoredNonce;
+        var xored_nonces_keys = Object.keys(xored_nonces);
         xored_nonces_keys.sort();
-        nonces = {};
+        var nonces = {};
 
         var t_R = context.my_t_right;
         var i = xored_nonces_keys.indexOf(context.client.peer.id);
@@ -623,7 +625,7 @@ define(['jquery', 'cryptico'], function($) {
                         return context.rounds[0].send(context);
                     });
                     log("info", "init received");
-                    this.on['init']();
+                    this.emitEvent('init');
                     this["status"] = "auth";
                     break;
                 case "auth":
@@ -690,7 +692,7 @@ define(['jquery', 'cryptico'], function($) {
 
         this.sendShutdown = function () {
             // TODO: think about keylength 64
-            secret = JSON.stringify(this.myEphPrivKey);
+            var secret = JSON.stringify(this.myEphPrivKey);
             var encryptedText = cryptico.encryptAESCBC(
                 secret,
                 this.sessionKey.slice(0, 32)
@@ -746,9 +748,75 @@ define(['jquery', 'cryptico'], function($) {
          * Events handling. For future using
          */
         this.on = {
-            init: function () {},
-            shutdown: function () {}
-        }
+            init: [],
+            shutdown: [],
+            canRead: []
+        };
+
+        /**
+         * Used for callbacks that must be triggered once
+         * @private
+         */
+        this._oneOff = {};
+
+        /**
+         * Adds event listener to the event
+         * @param {String} name name of event
+         * @param {function} callback event handler
+         * @param {Boolean} oneOff only run once?
+         */
+        this.subscribeOnEvent = function(name, callback, oneOff) {
+            if (!this.on[name]) {
+                this.on[name] = [];
+            }
+
+            this.on[name].push(callback);
+
+            if (oneOff) {
+                if (!this._oneOff[name]) {
+                    this._oneOff[name] = [];
+                }
+
+                this._oneOff[name].push(callback);
+            }
+        };
+
+        /**
+         * Speaks for itself, doesn't it?
+         * @param {String} name name of event
+         * @param {Array} args arguments for event handlers
+         */
+        this.emitEvent = function(name, args) {
+            if (this.on[name]) {
+                this.on[name].forEach(function(elem) {
+                    elem.apply(this, args);
+                }, this);
+            }
+
+            if (this._oneOff[name]) {
+                this._oneOff[name].forEach(function(elem) {
+                    let idx = this.on[name].indexOf(elem);
+
+                    if (idx > -1) {
+                        this.on[name].splice(idx, 1);
+                    }
+                }, this);
+                this._oneOff[name] = [];
+            }
+        };
+
+        /**
+         * Clears list of handlers for event specified
+         * @param {String} name name of event
+         */
+        this.clearEventListeners = function(name) {
+            this.on[name] = [];
+            this._oneOff[name] = [];
+        };
+
+        this.subscribeOnEvent('shutdown', function() {
+            this.reset();
+        })
     }
 
     return mpOTRContext;

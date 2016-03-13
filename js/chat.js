@@ -16,6 +16,8 @@ require.config({
 });
 
 require(['jquery', 'client'], function($, client) {
+    "use strict";
+
     $('#sendMessage').on('click', function () {
         var msgBox = $('#messageText');
         var message = escape(msgBox.val());
@@ -129,13 +131,13 @@ require(['jquery', 'client'], function($, client) {
                 close: updateContactList
             });
 
-        client.context.on['init'] = function() {
+        client.context.subscribeOnEvent('init', function() {
             $("#mpOTR").text("stop mpOTR");
-        }
-        client.context.on['shutdown'] = function() {
+        });
+
+        client.context.subscribeOnEvent('shutdown', function() {
             $("#mpOTR").text("start mpOTR");
-            client.context.reset();
-        }
+        });
 
         $("#init").prop("disabled", true);
         $("#nickname").prop("disabled", true);
