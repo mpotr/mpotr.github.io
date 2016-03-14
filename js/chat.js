@@ -65,15 +65,15 @@ require(['jquery', 'client'], function($, client) {
             client.context.sendShutdown();
             $("#mpOTR").text("start mpOTR");
         } else {
-            client.sendMessage("init", "mpOTR");
             $("#mpOTR").text("stop mpOTR");
+            client.context.start();
         }
     });
 
     /**
      * Writes authorized message to chat
-     * @param {string} author
-     * @param {string} message
+     * @param {String} author
+     * @param {String} message
      */
     function writeToChat(author, message) {
         // TODO: Add this function to client

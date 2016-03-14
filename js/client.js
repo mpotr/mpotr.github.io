@@ -226,9 +226,9 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             callback();
         }
 
-        if (client.amILeader()) {
+        if (client.context.status === "chat" && client.amILeader()) {
             client.context.subscribeOnEvent('shutdown', function() {
-                client.sendMessage("init", "mpOTR");
+                client.context.start();
             }, true);
             client.context.sendShutdown();
         }

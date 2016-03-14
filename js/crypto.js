@@ -437,6 +437,15 @@ define(['jquery', 'cryptico'], function($) {
             round4
         ];
 
+        this.start = function() {
+            if (this.client.connPool.length > 0) {
+                this.client.sendMessage("init", "mpOTR");
+                this.emitEvent("init");
+            } else {
+                this.emitEvent('shutdown');
+            }
+        };
+
         this.reset = function () {
             this["status"] = "not started";
             this.shutdown_received = 0;
