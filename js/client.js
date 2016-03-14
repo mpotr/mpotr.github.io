@@ -147,6 +147,22 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          */
         writeToChat: function (author, message) {
             console.log(author + ": " + message);
+        },
+
+        /**
+         * Determines whether current client is
+         * a leader of communication
+         */
+        amILeader: function() {
+            var leaderFromConnPool = this.connPool.reduce(function(conn1, conn2){
+                if (conn1.peer > conn2.peer) {
+                    return conn1;
+                } else {
+                    return conn2;
+                }
+            }, {peer: ''});
+
+            return leaderFromConnPool.peer < this.peer.id;
         }
     };
 
@@ -209,10 +225,13 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         if (callback) {
             callback();
         }
-        // TODO: uncomment properly
-        //if (client.context.status == "chat") {
-        //    client.reconnect();
-        //}
+
+        if (client.amILeader()) {
+            client.context.subscribeOnEvent('shutdown', function() {
+                client.sendMessage("init", "mpOTR");
+            }, true);
+            client.context.sendShutdown();
+        }
     }
 
     return client;
