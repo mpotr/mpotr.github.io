@@ -35,6 +35,26 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
             this.context = new mpOTRContext(this);
 
+            this.connPool.add = function(elem) {
+                client.context.emitEvent('connPoolAdd');
+                this.push(elem);
+
+                return this;
+            };
+
+            this.connPool.remove = function(elem) {
+                var idx = this.indexOf(elem);
+
+                if (idx > -1) {
+                    client.context.emitEvent('connPoolRemove');
+                    this.splice(idx, 1);
+
+                    return elem;
+                }
+
+                return undefined;
+            };
+
             this.context.subscribeOnEvent('shutdown', function() {
                 client.frontier = [];
                 client.lostMsg = [];
@@ -68,7 +88,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                             handleDisconnect(this, self.on["close"]);
                         });
 
-                    self.connPool.push(conn);
+                    self.connPool.add(conn);
                     self.addFriend(conn.peer);
 
                     if (self.on["add"]) {
@@ -218,7 +238,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         var idx = client.connPool.indexOf(conn);
 
         if (idx > -1) {
-            client.connPool.splice(idx, 1);
+            client.connPool.remove(conn);
             delete client.peer.connections[conn.peer];
         }
 
