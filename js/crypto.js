@@ -796,22 +796,26 @@ define(['jquery', 'cryptico'], function($) {
          * @param {Array} args arguments for event handlers
          */
         this.emitEvent = function(name, args) {
-            if (this.on[name]) {
-                this.on[name].forEach(function(elem) {
-                    elem.apply(this, args);
-                }, this);
-            }
+            var self = this;
 
-            if (this._oneOff[name]) {
-                this._oneOff[name].forEach(function(elem) {
-                    let idx = this.on[name].indexOf(elem);
+            setTimeout(function() {
+                if (self.on[name]) {
+                    self.on[name].forEach(function (elem) {
+                        elem.apply(self, args);
+                    });
+                }
 
-                    if (idx > -1) {
-                        this.on[name].splice(idx, 1);
-                    }
-                }, this);
-                this._oneOff[name] = [];
-            }
+                if (self._oneOff[name]) {
+                    self._oneOff[name].forEach(function (elem) {
+                        let idx = self.on[name].indexOf(elem);
+
+                        if (idx > -1) {
+                            self.on[name].splice(idx, 1);
+                        }
+                    });
+                    self._oneOff[name] = [];
+                }
+            }, 0);
         };
 
         /**
