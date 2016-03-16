@@ -129,6 +129,7 @@ require(['jquery', 'client'], function($, client) {
             {
                 open: function (id) {
                     $('#peerID').html("Your id is: " + id);
+                    $('#sendMessage')[0].disabled = false;
                     client.nickname = id;
                 },
                 add: updateContactList,
