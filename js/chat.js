@@ -18,6 +18,10 @@ require.config({
 require(['jquery', 'client'], function($, client) {
     "use strict";
 
+    $('body').onunload = function() {
+        client.chatDisconnect();
+    };
+
     $('#sendMessage').on('click', function () {
         var msgBox = $('#messageText');
         var message = escape(msgBox.val());
