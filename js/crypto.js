@@ -437,6 +437,9 @@ define(['jquery', 'cryptico'], function($) {
             round4
         ];
 
+        /**
+         * Initiates mpOTR session
+         */
         this.start = function() {
             if (this.client.connPool.length > 0) {
                 this.client.sendMessage("init", "mpOTR");
@@ -446,6 +449,9 @@ define(['jquery', 'cryptico'], function($) {
             }
         };
 
+        /**
+         * Resets all crypto-properties and rounds
+         */
         this.reset = function () {
             this["status"] = "not started";
             this.shutdown_received = 0;
@@ -474,6 +480,10 @@ define(['jquery', 'cryptico'], function($) {
         };
         this.reset();
 
+        /**
+         * Sends broadcast request to retrieve
+         * a lost message in response
+         */
         this.deliveryRequest = function () {
             var data = {};
             data["type"] = "mpOTRLostMessage";
@@ -487,6 +497,13 @@ define(['jquery', 'cryptico'], function($) {
             }
         };
 
+        /**
+         * Searches a lost message in message pools.
+         * Will return the lost message if founds one.
+         * Otherwise returns undefined.
+         * @param data delivery request
+         * @returns {Message}
+         */
         this.deliveryResponse = function (data) {
             var idx;
             if (!this.checkSig(data, data['from'])) {

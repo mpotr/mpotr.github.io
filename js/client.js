@@ -209,10 +209,12 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 if (this.peer !== data["from"]) {
                     console.log('alert', "Senders id don't match");
                 }
+
                 client.context.receiveMessage(data);
                 break;
             case "mpOTRLostMessage":
                 var response = client.context.deliveryResponse(data);
+
                 if (response) {
                     this.send(response);
                 }
@@ -221,6 +223,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 if (this.peer !== data["from"]) {
                     console.log('alert', "Senders id don't match");
                 }
+
                 if (client.context.receiveShutdown(data)) {
                     client.context.emitEvent('shutdown');
                     console.log("info", "mpOTRContext reset");
