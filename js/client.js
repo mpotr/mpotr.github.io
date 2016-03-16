@@ -35,25 +35,29 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
             this.context = new mpOTRContext(this);
 
-            this.connPool.add = function(elem) {
-                client.context.emitEvent('connPoolAdd');
-                this.push(elem);
+            Object.defineProperty(this.connPool, "add", {
+                value: function(elem) {
+                    client.context.emitEvent('connPoolAdd');
+                    this.push(elem);
 
-                return this;
-            };
-
-            this.connPool.remove = function(elem) {
-                var idx = this.indexOf(elem);
-
-                if (idx > -1) {
-                    client.context.emitEvent('connPoolRemove');
-                    this.splice(idx, 1);
-
-                    return elem;
+                    return this;
                 }
+            });
 
-                return undefined;
-            };
+            Object.defineProperty(this.connPool, "remove", {
+                value: function(elem) {
+                    var idx = this.indexOf(elem);
+
+                    if (idx > -1) {
+                        client.context.emitEvent('connPoolRemove');
+                        this.splice(idx, 1);
+
+                        return elem;
+                    }
+
+                    return undefined;
+                }
+            });
 
             this.context.subscribeOnEvent('shutdown', function() {
                 client.frontier = [];
