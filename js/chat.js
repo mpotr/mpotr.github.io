@@ -49,7 +49,7 @@ require(['jquery', 'client'], function($, client) {
     });
 
     $('#messageText').on('keypress', function(e) {
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
             $('#sendMessage').click();
         }
     });
