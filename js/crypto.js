@@ -115,16 +115,19 @@ define(['jquery', 'cryptico'], function($) {
      */
     Round.prototype.received = 0;
 
+    Round.prototype.ready_dict = {};
+
     /**
      * Method to reset all Round settings
      */
     Round.prototype.reset = function() {
         this.sended = false;
         this.received = 0;
+        this.ready_dict = {};
     };
 
     var round1 = new Round();
-    round1.name = "round 1";
+    round1.name = "0";
     round1.send = function (context) {
         var result = {};
         var my_k = new Array(len_sid_random);
@@ -180,7 +183,7 @@ define(['jquery', 'cryptico'], function($) {
     };
 
     var round2 = new Round();
-    round2.name = "round 2";
+    round2.name = "1";
 
     round2.send = function (context) {
         var result = {
@@ -237,7 +240,7 @@ define(['jquery', 'cryptico'], function($) {
     };
 
     var round3 = new Round();
-    round3.name = "round 3";
+    round3.name = "2";
 
     var xor = function (a, b) {
         var result = "";
@@ -310,7 +313,7 @@ define(['jquery', 'cryptico'], function($) {
     };
 
     var round4 = new Round();
-    round4.name = "round 4";
+    round4.name = "3";
 
     round4.send = function (context) {
         var result = {
@@ -442,6 +445,7 @@ define(['jquery', 'cryptico'], function($) {
          */
         this.start = function() {
             if (this.client.connPool.length > 0) {
+                this["round"] = 0;
                 this.client.sendMessage("init", "mpOTR");
                 this.emitEvent("init");
             } else {
@@ -454,6 +458,7 @@ define(['jquery', 'cryptico'], function($) {
          */
         this.reset = function () {
             this["status"] = "not started";
+            this["round"] = 0;
             this.shutdown_received = 0;
             this.shutdown_sended = false;
             this.myLongPubKey = undefined;
@@ -656,28 +661,57 @@ define(['jquery', 'cryptico'], function($) {
                     break;
                 case "auth":
                     var roundNum = parseInt(msgList[1], 10);
-                    var round = this.rounds[roundNum];
-                    if (!round.sended) {
+                    if ((this["round"] != roundNum) && !((roundNum == (this["round"] + 1)) && (this.rounds[this["round"]].ready))) {
+                        log("alert", "somebody tries to break chat");
+                        break;
+                    }
+                    var round_now = this.rounds[roundNum];
+                    if (!round_now.sended) {
                         process(this, function (context) {
-                            return round.send(context);
+                            return round_now.send(context);
                         });
                     }
 
                     process(this, function (context) {
-                        return round.receive(author, msgList.slice(2), context);
+                        return round_now.receive(author, msgList.slice(2), context);
                     });
 
-                    if (this.client.connPool.length === round.received) {
-                        if (roundNum < 3) {
-                            process(this, function (context) {
-                                return context.rounds[roundNum + 1].send(context);
-                            });
-                        } else {
-                            this["status"] = "chat";
-                        }
+                    if (this.client.connPool.length === round_now.received) {
+                        //TODO: rewrite to dict
+                        var message = "ready:" + this.rounds[roundNum]["name"];
+                        this.rounds[this.round].ready = true;
+                        this.client.sendMessage(message, "mpOTR")
                     }
 
                     log("info", this.status);
+                    break;
+                case "ready":
+                    roundNum = parseInt(msgList[1], 10);
+                    if (((this["round"] + 1) == roundNum) && this.rounds[this["round"]].ready) {
+                        break;
+                    }
+                    if (this["round"] != roundNum) {
+                        log("alert", "somebody tries to break chat");
+                        break;
+                    }
+                    this.rounds[roundNum]["ready_dict"][author] = true;
+                    var allNodesReady = true;
+                    this.client.connPool.forEach(function(conn) {
+                        allNodesReady = allNodesReady && this.rounds[roundNum]["ready_dict"][conn.peer];
+                    }, this);
+                    if (allNodesReady !== true) {
+                        break;
+                    }
+                    if (roundNum < 3) {
+                       this["round"] = this["round"] + 1;
+                       process(this, function (context) {
+                           return context.rounds[roundNum + 1].send(context);
+                       });
+                    } else {
+                        this["round"] = undefined;
+                        this["status"] = "chat";
+                        log("info", "chat");
+                    }
                     break;
                 case "error":
                     //TODO: something more adequate
