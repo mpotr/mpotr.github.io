@@ -1,4 +1,6 @@
 define(['crypto', 'peerjs'], function(mpOTRContext) {
+    "use strict";
+
     /**
      * @property {Peer} peer Peer object
      * @property {Array} connPool Connections' pool
@@ -12,22 +14,57 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         lostMsg: [],
         delivered: [],
         undelivered: [],
+        friends: [],
+        on: {},
 
         /**
          * Initialization of peer
-         * @param {function} writeFunc overrides client's writeToChat
-         * @param {function} callback action on successful connection with peer server
+         * @param peerID {String} Desirable peer id
+         * @param writeFunc {function} overrides client's writeToChat
+         * @param callbacks {Object} callbacks on peer open, add, disconnect
          */
-        init: function (writeFunc, callback) {
+        init: function (peerID, writeFunc, callbacks) {
             this.writeToChat = writeFunc;
+            this.on = callbacks;
 
-            this.peer = new Peer({key: '2bmv587i7jru23xr'})
-                .on('open', callback)
+            this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'})
+                .on('open', this.on["open"])
                 .on('connection', function (conn) {
                     client.addPeer(conn);
                 });
 
             this.context = new mpOTRContext(this);
+
+            Object.defineProperty(this.connPool, "add", {
+                value: function(elem) {
+                    client.context.emitEvent('connPoolAdd');
+                    this.push(elem);
+
+                    return this;
+                }
+            });
+
+            Object.defineProperty(this.connPool, "remove", {
+                value: function(elem) {
+                    var idx = this.indexOf(elem);
+
+                    if (idx > -1) {
+                        client.context.emitEvent('connPoolRemove');
+                        this.splice(idx, 1);
+
+                        return elem;
+                    }
+
+                    return undefined;
+                }
+            });
+
+            this.context.subscribeOnEvent('shutdown', function() {
+                client.frontier = [];
+                client.lostMsg = [];
+                client.delivered = [];
+                client.undelivered = [];
+            });
         },
 
         /**
@@ -48,29 +85,52 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * @param {DataConnection|Peer} anotherPeer New peer or established connection
          */
         addPeer: function (anotherPeer) {
-            var conn;
+            var success = (function(self) {
+                return function(conn) {
+                    conn.on('data', handleMessage)
+                        .on('close', function() {
+                            handleDisconnect(this, self.on["close"]);
+                        });
+
+                    self.connPool.add(conn);
+                    self.addFriend(conn.peer);
+
+                    if (self.on["add"]) {
+                        self.on["add"]();
+                    }
+                }
+            })(this);
 
             if (typeof anotherPeer === "string") {
-                // TODO: add error handling
                 if (this.peer.id === anotherPeer) {
                     return;
                 }
 
-                for (var i = 0; i < this.connPool.length; ++i) {
+                for (let i = 0; i < this.connPool.length; ++i) {
                     if (this.connPool[i].peer === anotherPeer) {
                         return;
                     }
                 }
 
-                conn = this.peer.connect(anotherPeer);
+                // TODO: add error handling
+                var conn = this.peer.connect(anotherPeer);
+                conn.on("open", function () {
+                    // Will use "this" of data connection
+                    success(this);
+                });
             } else {
-                conn = anotherPeer;
+                success(anotherPeer);
             }
+        },
 
-            conn.on('data', handleMessage)
-                .on('close', handleDisconnect);
-
-            this.connPool.push(conn);
+        /**
+         * Adds peer to friend list
+         * @param friend peer to add
+         */
+        addFriend: function (friend) {
+            if (this.friends.indexOf(friend) === -1) {
+                this.friends.push(friend);
+            }
         },
 
         /**
@@ -98,7 +158,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * @private
          */
         _sendMessage: function (data) {
-            for (var idx in this.connPool) {
+            for (let idx in this.connPool) {
                 this.connPool[idx].send(data);
             }
         },
@@ -111,6 +171,22 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          */
         writeToChat: function (author, message) {
             console.log(author + ": " + message);
+        },
+
+        /**
+         * Determines whether current client is
+         * a leader of communication
+         */
+        amILeader: function() {
+            var leaderFromConnPool = this.connPool.reduce(function(conn1, conn2){
+                if (conn1.peer > conn2.peer) {
+                    return conn1;
+                } else {
+                    return conn2;
+                }
+            }, {peer: ''});
+
+            return leaderFromConnPool.peer < this.peer.id;
         }
     };
 
@@ -133,10 +209,12 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 if (this.peer !== data["from"]) {
                     console.log('alert', "Senders id don't match");
                 }
+
                 client.context.receiveMessage(data);
                 break;
             case "mpOTRLostMessage":
                 var response = client.context.deliveryResponse(data);
+
                 if (response) {
                     this.send(response);
                 }
@@ -145,9 +223,9 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 if (this.peer !== data["from"]) {
                     console.log('alert', "Senders id don't match");
                 }
+
                 if (client.context.receiveShutdown(data)) {
-                    //TODO: think about removing old mpOTRContext
-                    client.context = new mpOTRContext(this);
+                    client.context.emitEvent('shutdown');
                     console.log("info", "mpOTRContext reset");
                 }
                 break;
@@ -163,17 +241,24 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      * Removes connection from connection pool and
      * from peer.connections property
      */
-    function handleDisconnect() {
-        var idx = client.connPool.indexOf(this);
+    function handleDisconnect(conn, callback) {
+        var idx = client.connPool.indexOf(conn);
 
         if (idx > -1) {
-            client.connPool.splice(idx, 1);
-            delete client.peer.connections[this.peer];
+            client.connPool.remove(conn);
+            delete client.peer.connections[conn.peer];
         }
-        // TODO: uncomment properly
-        //if (client.context.status == "chat") {
-        //    client.reconnect();
-        //}
+
+        if (callback) {
+            callback();
+        }
+
+        if (client.context.status === "chat" && client.amILeader()) {
+            client.context.subscribeOnEvent('shutdown', function() {
+                client.context.start();
+            }, true);
+            client.context.sendShutdown();
+        }
     }
 
     return client;

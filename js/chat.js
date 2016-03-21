@@ -16,6 +16,12 @@ require.config({
 });
 
 require(['jquery', 'client'], function($, client) {
+    "use strict";
+
+    $('body').onunload = function() {
+        client.chatDisconnect();
+    };
+
     $('#sendMessage').on('click', function () {
         var msgBox = $('#messageText');
         var message = escape(msgBox.val());
@@ -43,7 +49,7 @@ require(['jquery', 'client'], function($, client) {
     });
 
     $('#messageText').on('keypress', function(e) {
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
             $('#sendMessage').click();
         }
     });
@@ -58,15 +64,20 @@ require(['jquery', 'client'], function($, client) {
         }
     });
 
-    $("#startmpOTR").on("click", function() {
-        client.sendMessage("init", "mpOTR");
-        $("#startmpOTR").prop("disabled", true);
+    $("#mpOTR").on("click", function() {
+        if ($("#mpOTR").text() === "stop mpOTR") {
+            client.context.sendShutdown();
+            $("#mpOTR").text("start mpOTR");
+        } else {
+            $("#mpOTR").text("stop mpOTR");
+            client.context.start();
+        }
     });
 
     /**
      * Writes authorized message to chat
-     * @param {string} author
-     * @param {string} message
+     * @param {String} author
+     * @param {String} message
      */
     function writeToChat(author, message) {
         // TODO: Add this function to client
@@ -77,15 +88,68 @@ require(['jquery', 'client'], function($, client) {
         $('#chat').scrollTop($('#chat')[0].scrollHeight);
     }
 
-    client.init(
-        writeToChat,
-        function(id) {
-            $('#peerID').html("Your id is: " + id);
-            client.nickname = id;
-        }
-    );
+    function updateContactList() {
+        $("#CLTableBody > tr").remove();
+        localStorage[client.peer.id] = JSON.stringify(client.friends);
 
-    client.context.on['init'] = function() {
-        $("#startmpOTR").prop("disabled", true);
+        for (var i = 0; i < client.friends.length; ++i) {
+            var friend = client.friends[i];
+
+            $("#CLTableBody").append(
+                "<tr>" +
+                "   <td>" +
+                "       <button id='" + friend + "' class='btn-block'>" +
+                friend +
+                "       </button>" +
+                "   </td>" +
+                "</tr>");
+
+            for (var j = 0; j < client.connPool.length; ++j) {
+                if (client.connPool[j].peer === friend) {
+                    $("#" + friend).prop("className", "btn-success btn-block");
+                    break;
+                }
+            }
+
+            $("#" + friend).on("click", (function(friend) {
+                return function () {
+                    client.addPeer(friend);
+                }
+            })(friend));
+        }
     }
+
+
+    $("#init").on("click", function () {
+        var peerID = $("#nickname").val();
+
+        client.init(
+            peerID,
+            writeToChat,
+            {
+                open: function (id) {
+                    $('#peerID').html("Your id is: " + id);
+                    $('#sendMessage').prop("disabled", false);
+                    client.nickname = id;
+                },
+                add: updateContactList,
+                close: updateContactList
+            });
+
+        client.context.subscribeOnEvent('init', function() {
+            $("#mpOTR").text("stop mpOTR");
+        });
+
+        client.context.subscribeOnEvent('shutdown', function() {
+            $("#mpOTR").text("start mpOTR");
+        });
+
+        $("#init").prop("disabled", true);
+        $("#nickname").prop("disabled", true);
+
+        if (localStorage[peerID]) {
+            client.friends = JSON.parse(localStorage[peerID]);
+            updateContactList();
+        }
+    });
 });
