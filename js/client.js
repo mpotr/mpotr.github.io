@@ -35,29 +35,33 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
             this.context = new mpOTRContext(this);
 
-            Object.defineProperty(this.connPool, "add", {
-                value: function(elem) {
-                    client.context.emitEvent('connPoolAdd');
-                    this.push(elem);
+            if (!this.connPool.add) {
+                Object.defineProperty(this.connPool, "add", {
+                    value: function(elem) {
+                        client.context.emitEvent('connPoolAdd');
+                        this.push(elem);
 
-                    return this;
-                }
-            });
-
-            Object.defineProperty(this.connPool, "remove", {
-                value: function(elem) {
-                    var idx = this.indexOf(elem);
-
-                    if (idx > -1) {
-                        client.context.emitEvent('connPoolRemove');
-                        this.splice(idx, 1);
-
-                        return elem;
+                        return this;
                     }
+                });
+            }
 
-                    return undefined;
-                }
-            });
+            if (!this.connPool.remove) {
+                Object.defineProperty(this.connPool, "remove", {
+                    value: function(elem) {
+                        var idx = this.indexOf(elem);
+
+                        if (idx > -1) {
+                            client.context.emitEvent('connPoolRemove');
+                            this.splice(idx, 1);
+
+                            return elem;
+                        }
+
+                        return undefined;
+                    }
+                });
+            }
 
             this.context.subscribeOnEvent('shutdown', function() {
                 client.frontier = [];
@@ -74,7 +78,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             if (!this.peer.disconnected || !this.peer.destroyed) {
                 this.context.stopChat();
                 // TODO: Think about validation
-                setTimeout(function () {
+                setTimeout(() => {
                     this.peer.destroy();
                 }, 2000);
             }
@@ -113,8 +117,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }
 
                 // TODO: add error handling
-                var conn = this.peer.connect(anotherPeer);
-                conn.on("open", function () {
+                this.peer.connect(anotherPeer).on("open", function () {
                     // Will use "this" of data connection
                     success(this);
                 });
@@ -136,7 +139,8 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         /**
          * Sends text message to peers in
          * connPool
-         * @param {string} message
+         * @param {String} message
+         * @param {String} type
          */
         sendMessage: function (message, type) {
             var data = {

@@ -65,11 +65,13 @@ require(['jquery', 'client'], function($, client) {
     });
 
     $("#mpOTR").on("click", function() {
-        if ($("#mpOTR").text() === "stop mpOTR") {
+        var $mpOTR = $("#mpOTR");
+        
+        if ($mpOTR.text() === "stop mpOTR") {
             client.context.sendShutdown();
-            $("#mpOTR").text("start mpOTR");
+            $mpOTR.text("start mpOTR");
         } else {
-            $("#mpOTR").text("stop mpOTR");
+            $mpOTR.text("stop mpOTR");
             client.context.start();
         }
     });
@@ -83,9 +85,10 @@ require(['jquery', 'client'], function($, client) {
         // TODO: Add this function to client
         var msg = document.createElement('code');
         $(msg).text(author + ': ' + unescape(message) + '\n');
-        $('#chat').append(msg);
+        var $chat = $('#chat');
+        $chat.append(msg);
         // Autoscroll
-        $('#chat').scrollTop($('#chat')[0].scrollHeight);
+        $chat.scrollTop($chat[0].scrollHeight);
     }
 
     function updateContactList() {
@@ -113,7 +116,11 @@ require(['jquery', 'client'], function($, client) {
 
             $("#" + friend).on("click", (function(friend) {
                 return function () {
+                    this.disabled = true;
                     client.addPeer(friend);
+                    setTimeout(() => {
+                        this.disabled = false;
+                    }, 5000);
                 }
             })(friend));
         }
@@ -130,6 +137,9 @@ require(['jquery', 'client'], function($, client) {
                 open: function (id) {
                     $('#peerID').html("Your id is: " + id);
                     $('#sendMessage').prop("disabled", false);
+                    $('#addPeer').prop("disabled", false);
+                    $("#init").prop("disabled", true);
+                    $("#nickname").prop("disabled", true);
                     client.nickname = id;
                 },
                 add: updateContactList,
@@ -143,9 +153,6 @@ require(['jquery', 'client'], function($, client) {
         client.context.subscribeOnEvent('shutdown', function() {
             $("#mpOTR").text("start mpOTR");
         });
-
-        $("#init").prop("disabled", true);
-        $("#nickname").prop("disabled", true);
 
         if (localStorage[peerID]) {
             client.friends = JSON.parse(localStorage[peerID]);
