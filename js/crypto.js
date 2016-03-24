@@ -161,7 +161,8 @@ define(['jquery', 'cryptico'], function($) {
 
         result["status"] = "OK";
 
-        var s = "auth:0:" + my_k_hashed + ":" + pub_longterm + ":" + pub_eph;
+        // var s = "auth:0:" + my_k_hashed + ":" + pub_longterm + ":" + pub_eph;
+        var s = ["auth", "0", String(my_k_hashed), String(pub_longterm), String(pub_eph)];
         context.client.sendMessage(s, "mpOTR");
         this.sended = true;
         return result;
@@ -213,7 +214,8 @@ define(['jquery', 'cryptico'], function($) {
         result.update.exp_r_i = exp_r_i;
 
         result["status"] = "OK";
-        var s = "auth:1:" + sid + ":" + exp_r_i;
+        // var s = "auth:1:" + sid + ":" + exp_r_i;
+        var s = ["auth", "1", String(sid), String(exp_r_i)];
         result["update"]["expAuthNonce"] = {};
         result["update"]["expAuthNonce"][context.client.peer.id] = exp_r_i;
         context.client.sendMessage(s, "mpOTR");
@@ -291,7 +293,8 @@ define(['jquery', 'cryptico'], function($) {
         result.update["bigT"][context.client.peer.id] = bigT;
         result.update["myBigT"] = bigT;
 
-        var s = "auth:2:" + xoredNonce + ":" + bigT;
+        // var s = "auth:2:" + xoredNonce + ":" + bigT;
+        var s = ["auth", "2", String(xoredNonce), String(bigT)];
         context.client.sendMessage(s, "mpOTR");
         this.sended = true;
 
@@ -380,7 +383,8 @@ define(['jquery', 'cryptico'], function($) {
         result.update["sig"] = sig;
         result.update["c_i"] = c_i_hashed;
 
-        var s = "auth:3:" + d_i + ":" + sig;
+        // var s = "auth:3:" + d_i + ":" + sig;
+        var s = ["auth", "3", String(d_i), String(sig)];
         context.client.sendMessage(s, "mpOTR");
         this.sended = true;
         return result;
@@ -649,7 +653,7 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.receive = function (author, msg) {
-            var msgList = msg.split(":");
+            var msgList = typeof (msg) === "string" ? [msg] : msg.slice();
             switch (msgList[0]) {
                 case "init":
                     process(this, function (context) {
@@ -678,7 +682,8 @@ define(['jquery', 'cryptico'], function($) {
 
                     if (this.client.connPool.length === round_now.received) {
                         //TODO: rewrite to dict
-                        var message = "ready:" + this.rounds[roundNum]["name"];
+                        // var message = "ready:" + this.rounds[roundNum]["name"];
+                        var message = ["ready", String(this.rounds[roundNum]["name"])];
                         this.rounds[this.round].ready = true;
                         this.client.sendMessage(message, "mpOTR")
                     }
