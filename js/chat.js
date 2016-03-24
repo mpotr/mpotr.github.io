@@ -65,11 +65,13 @@ require(['jquery', 'client'], function($, client) {
     });
 
     $("#mpOTR").on("click", function() {
-        if ($("#mpOTR").text() === "stop mpOTR") {
+        var $mpOTR = $("#mpOTR");
+        
+        if ($mpOTR.text() === "stop mpOTR") {
             client.context.sendShutdown();
-            $("#mpOTR").text("start mpOTR");
+            $mpOTR.text("start mpOTR");
         } else {
-            $("#mpOTR").text("stop mpOTR");
+            $mpOTR.text("stop mpOTR");
             client.context.start();
         }
     });
@@ -83,9 +85,10 @@ require(['jquery', 'client'], function($, client) {
         // TODO: Add this function to client
         var msg = document.createElement('code');
         $(msg).text(author + ': ' + unescape(message) + '\n');
-        $('#chat').append(msg);
+        var $chat = $('#chat');
+        $chat.append(msg);
         // Autoscroll
-        $('#chat').scrollTop($('#chat')[0].scrollHeight);
+        $chat.scrollTop($chat[0].scrollHeight);
     }
 
     function updateContactList() {

@@ -78,7 +78,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             if (!this.peer.disconnected || !this.peer.destroyed) {
                 this.context.stopChat();
                 // TODO: Think about validation
-                setTimeout(function () {
+                setTimeout(() => {
                     this.peer.destroy();
                 }, 2000);
             }
@@ -140,7 +140,8 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         /**
          * Sends text message to peers in
          * connPool
-         * @param {string} message
+         * @param {String} message
+         * @param {String} type
          */
         sendMessage: function (message, type) {
             var data = {
