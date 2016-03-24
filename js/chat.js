@@ -130,6 +130,7 @@ require(['jquery', 'client'], function($, client) {
                 open: function (id) {
                     $('#peerID').html("Your id is: " + id);
                     $('#sendMessage').prop("disabled", false);
+                    $('#addPeer').prop("disabled", false);
                     $("#init").prop("disabled", true);
                     $("#nickname").prop("disabled", true);
                     client.nickname = id;
