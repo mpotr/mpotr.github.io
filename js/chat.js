@@ -130,6 +130,8 @@ require(['jquery', 'client'], function($, client) {
                 open: function (id) {
                     $('#peerID').html("Your id is: " + id);
                     $('#sendMessage').prop("disabled", false);
+                    $("#init").prop("disabled", true);
+                    $("#nickname").prop("disabled", true);
                     client.nickname = id;
                 },
                 add: updateContactList,
@@ -143,9 +145,6 @@ require(['jquery', 'client'], function($, client) {
         client.context.subscribeOnEvent('shutdown', function() {
             $("#mpOTR").text("start mpOTR");
         });
-
-        $("#init").prop("disabled", true);
-        $("#nickname").prop("disabled", true);
 
         if (localStorage[peerID]) {
             client.friends = JSON.parse(localStorage[peerID]);
