@@ -116,7 +116,11 @@ require(['jquery', 'client'], function($, client) {
 
             $("#" + friend).on("click", (function(friend) {
                 return function () {
+                    this.disabled = true;
                     client.addPeer(friend);
+                    setTimeout(() => {
+                        this.disabled = false;
+                    }, 5000);
                 }
             })(friend));
         }

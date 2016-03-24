@@ -117,8 +117,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }
 
                 // TODO: add error handling
-                var conn = this.peer.connect(anotherPeer);
-                conn.on("open", function () {
+                this.peer.connect(anotherPeer).on("open", function () {
                     // Will use "this" of data connection
                     success(this);
                 });
