@@ -1,4 +1,4 @@
-define(['crypto', 'peerjs'], function(mpOTRContext, peerjs) {
+define(['crypto', 'peerjs'], function(mpOTRContext) {
     "use strict";
 
     /**
@@ -27,7 +27,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext, peerjs) {
             this.writeToChat = writeFunc;
             this.on = callbacks;
 
-            this.peer = new peerjs.Peer(peerID, {key: '2bmv587i7jru23xr'})
+            this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'})
                 .on('open', this.on["open"])
                 .on('connection', function (conn) {
                     client.addPeer(conn);
