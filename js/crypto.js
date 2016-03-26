@@ -493,7 +493,7 @@ define(['jquery', 'cryptico'], function($) {
                 data["lostMsgID"] = id;
                 data['sig'] = this.signMessage(data);
 
-                this.client._sendMessage(data);
+                this.client.broadcast(data);
             }
         };
 
@@ -554,7 +554,7 @@ define(['jquery', 'cryptico'], function($) {
             this.receiveMessage(data);
             // OldBlue ends
 
-            this.client._sendMessage(data);
+            this.client.broadcast(data);
         };
 
         this.receiveMessage = function (data) {
@@ -719,7 +719,7 @@ define(['jquery', 'cryptico'], function($) {
 
         this.signMessage = function (data) {
             var keys = Object.keys(data);
-            keys = keys.sort();
+            keys.sort();
 
             var result = "";
             for (var i in keys) {
@@ -765,7 +765,7 @@ define(['jquery', 'cryptico'], function($) {
                 }
             };
 
-            this.client._sendMessage(data);
+            this.client.broadcast(data);
 
             return result;
         };

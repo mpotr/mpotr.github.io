@@ -137,10 +137,10 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         },
 
         /**
-         * Sends text message to peers in
+         * Sends typed message to peers in
          * connPool
-         * @param {*} message
-         * @param {String} type
+         * @param {*} message Message can be any combination of native JS types
+         * @param {String} type Type of message (e.g. unencrypted, mpOTR, etc.)
          */
         sendMessage: function (message, type) {
             var data = {
@@ -148,7 +148,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 "data": message
             };
 
-            this._sendMessage(data);
+            this.broadcast(data);
 
             if (type === "unencrypted") {
                 this.writeToChat(this.nickname, message);
@@ -159,9 +159,8 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * Sends JS object to all clients in connPool
          * Used by other sending functions
          * @param {Object} data Object to send
-         * @private
          */
-        _sendMessage: function (data) {
+        broadcast: function (data) {
             for (let conn of this.connPool) {
                 conn.send(data);
             }
