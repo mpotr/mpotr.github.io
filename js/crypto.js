@@ -441,7 +441,7 @@ define(['jquery', 'cryptico'], function($) {
         this.start = function() {
             if (this.client.connPool.length > 0) {
                 this["round"] = 0;
-                this.client.sendMessage("init", "mpOTR");
+                this.client.sendMessage(["init"], "mpOTR");
                 this.emitEvent("init");
             } else {
                 this.emitEvent('shutdown');
@@ -644,8 +644,7 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.receive = function (author, msg) {
-            var msgList = typeof (msg) === "string" ? [msg] : msg.slice();
-            switch (msgList[0]) {
+            switch (msg[0]) {
                 case "init":
                     process(this, function (context) {
                         return context.rounds[0].send(context);
@@ -655,7 +654,7 @@ define(['jquery', 'cryptico'], function($) {
                     this["status"] = "auth";
                     break;
                 case "auth":
-                    var roundNum = parseInt(msgList[1], 10);
+                    var roundNum = parseInt(msg[1], 10);
                     if ((this["round"] != roundNum) && !((roundNum == (this["round"] + 1)) && (this.rounds[this["round"]].ready))) {
                         log("alert", "somebody tries to break chat");
                         break;
@@ -668,7 +667,7 @@ define(['jquery', 'cryptico'], function($) {
                     }
 
                     process(this, function (context) {
-                        return round_now.receive(author, msgList.slice(2), context);
+                        return round_now.receive(author, msg.slice(2), context);
                     });
 
                     if (this.client.connPool.length === round_now.received) {
@@ -680,7 +679,7 @@ define(['jquery', 'cryptico'], function($) {
                     log("info", this.status);
                     break;
                 case "ready":
-                    roundNum = parseInt(msgList[1], 10);
+                    roundNum = parseInt(msg[1], 10);
                     if (((this["round"] + 1) == roundNum) && this.rounds[this["round"]].ready) {
                         break;
                     }
@@ -838,7 +837,7 @@ define(['jquery', 'cryptico'], function($) {
         /**
          * Speaks for itself, doesn't it?
          * @param {String} name name of event
-         * @param {Array} args arguments for event handlers
+         * @param {Array=} args arguments for event handlers
          */
         this.emitEvent = function(name, args) {
             var self = this;
