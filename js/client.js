@@ -139,7 +139,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         /**
          * Sends text message to peers in
          * connPool
-         * @param {String} message
+         * @param {*} message
          * @param {String} type
          */
         sendMessage: function (message, type) {

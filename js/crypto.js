@@ -2,7 +2,7 @@ define(['jquery', 'cryptico'], function($) {
     "use strict";
 
     var len_sid_random = 13;
-    var keylength = "1024";
+    var key_length = "1024";
     var auth_key_length = "1024";
     var exp = "03";
     var qmod = new BigInteger("1205156213460516294276038011098783037428475274251229971327058470979054415841306114445046929130670807336613570738952006098251824478525291315971365353402504611531367372670536703348123007294680829887020513584624726600189364717085162921889329599071881596888429934762044470097788673059921772650773521873603874984881875042154463169647779984441228936206496905064565147296499973963182632029642323604865192473605840717232357219244260470063729922144429668263448160459816959", 10);
@@ -15,7 +15,6 @@ define(['jquery', 'cryptico'], function($) {
      * @param {string} msg Log message
      */
     function log(level, msg) {
-        //TODO: something more adequate
         switch (level) {
             case "alert":
                 alert(msg);
@@ -49,10 +48,6 @@ define(['jquery', 'cryptico'], function($) {
         for (var key in dest) {
             if ((key in src) && (isObject(src[key]))) {
                 $.extend(src[key], dest[key]);
-                //            for (var skey in dest[dkey])
-                //            {
-                //                src[dkey][skey] = dest[dkey][skey];
-                //            }
             } else {
                 src[key] = dest[key];
             }
@@ -138,11 +133,11 @@ define(['jquery', 'cryptico'], function($) {
         }).join("");
         var my_k_hashed = sha256.hex(my_k);
 
-        var long_pair = generateExpPair(keylength);
+        var long_pair = generateExpPair(key_length);
         var longterm = long_pair[0];
         var pub_longterm = long_pair[1];
 
-        var eph_pair = generatePair(keylength);
+        var eph_pair = generatePair(key_length);
         var eph = eph_pair[0];
         var pub_eph = eph_pair[1];
 
@@ -161,8 +156,8 @@ define(['jquery', 'cryptico'], function($) {
 
         result["status"] = "OK";
 
-        var s = ["auth", "0", String(my_k_hashed), String(pub_longterm), String(pub_eph)];
-        context.client.sendMessage(s, "mpOTR");
+        var message = ["auth", "0", String(my_k_hashed), String(pub_longterm), String(pub_eph)];
+        context.client.sendMessage(message, "mpOTR");
         this.sended = true;
         return result;
     };
@@ -213,10 +208,10 @@ define(['jquery', 'cryptico'], function($) {
         result.update.exp_r_i = exp_r_i;
 
         result["status"] = "OK";
-        var s = ["auth", "1", String(sid), String(exp_r_i)];
+        var message = ["auth", "1", String(sid), String(exp_r_i)];
         result["update"]["expAuthNonce"] = {};
         result["update"]["expAuthNonce"][context.client.peer.id] = exp_r_i;
-        context.client.sendMessage(s, "mpOTR");
+        context.client.sendMessage(message, "mpOTR");
         this.sended = true;
         return result;
     };
