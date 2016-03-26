@@ -1,4 +1,4 @@
-define(['crypto', 'peerjs'], function(mpOTRContext) {
+define(['crypto', 'peerjs'], function(mpOTRContext, peerjs) {
     "use strict";
 
     /**
@@ -19,15 +19,15 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
         /**
          * Initialization of peer
-         * @param peerID {String} Desirable peer id
-         * @param writeFunc {function} overrides client's writeToChat
-         * @param callbacks {Object} callbacks on peer open, add, disconnect
+         * @param {String} peerID Desirable peer id
+         * @param {function} writeFunc overrides client's writeToChat
+         * @param {Object} callbacks callbacks on peer open, add, disconnect
          */
         init: function (peerID, writeFunc, callbacks) {
             this.writeToChat = writeFunc;
             this.on = callbacks;
 
-            this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'})
+            this.peer = new peerjs.Peer(peerID, {key: '2bmv587i7jru23xr'})
                 .on('open', this.on["open"])
                 .on('connection', function (conn) {
                     client.addPeer(conn);
@@ -162,8 +162,8 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * @private
          */
         _sendMessage: function (data) {
-            for (let idx in this.connPool) {
-                this.connPool[idx].send(data);
+            for (let conn of this.connPool) {
+                conn.send(data);
             }
         },
 
@@ -197,7 +197,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
     /**
      * Function responsible for message handling:
      * - prints message
-     * - sends acknoledgements
+     * - sends acknowledgements
      * @param {Object} data message received
      */
     function handleMessage(data) {

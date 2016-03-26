@@ -1,4 +1,4 @@
-define(['jquery', 'cryptico'], function($) {
+define(['jquery', 'cryptico'], function($, cryptico) {
     "use strict";
 
     var len_sid_random = 13;
@@ -131,7 +131,7 @@ define(['jquery', 'cryptico'], function($) {
         my_k = my_k.map(function (el) {
             return String.fromCharCode(el);
         }).join("");
-        var my_k_hashed = sha256.hex(my_k);
+        var my_k_hashed = cryptico.sha256.hex(my_k);
 
         var long_pair = generateExpPair(key_length);
         var longterm = long_pair[0];
@@ -198,7 +198,7 @@ define(['jquery', 'cryptico'], function($) {
             sid_raw = sid_raw + hn[hna[i]];
         }
 
-        var sid = sha256.hex(sid_raw);
+        var sid = cryptico.sha256.hex(sid_raw);
         result.update.sid = sid;
 
         var auth_pair = generateExpPair(auth_key_length);
@@ -273,8 +273,8 @@ define(['jquery', 'cryptico'], function($) {
         var bigIntLPK = new BigInteger(context.myLongPrivKey.toString(), 10);
         var t_left_raw = left_pub_key.modPow(bigIntLPK, pmod);
         var t_right_raw = right_pub_key.modPow(bigIntLPK, pmod);
-        var t_left_hashed = sha256.hex(t_left_raw.toString());
-        var t_right_hashed = sha256.hex(t_right_raw.toString());
+        var t_left_hashed = cryptico.sha256.hex(t_left_raw.toString());
+        var t_right_hashed = cryptico.sha256.hex(t_right_raw.toString());
         var bigT = xor(t_left_hashed, t_right_hashed);
         var xoredNonce = xor(context.k_i, t_right_hashed);
 
@@ -330,7 +330,7 @@ define(['jquery', 'cryptico'], function($) {
         }
 
         for (var i in nonces) {
-            if (sha256.hex(nonces[i]) !== context.hashedNonceList[i]) {
+            if (cryptico.sha256.hex(nonces[i]) !== context.hashedNonceList[i]) {
                 result["status"] = "NONCE HASH CHECK FAILED";
                 return result;
             }
@@ -359,16 +359,16 @@ define(['jquery', 'cryptico'], function($) {
             sconf += nonces[xored_nonces_keys[i]] + "," + context.ephPubKeys[xored_nonces_keys[i]];
         }
 
-        sconf = sha256.hex(sconf);
+        sconf = cryptico.sha256.hex(sconf);
         var c_i_raw = context.sid + sconf;
-        var c_i_hashed = sha256.hex(c_i_raw);
+        var c_i_hashed = cryptico.sha256.hex(c_i_raw);
         var c_i_int = new BigInteger(c_i_hashed);
         c_i_int = c_i_int.mod(qmod);
         c_i_hashed = c_i_int.toString();
         var d_i = context.r_i.subtract(context.myLongPrivKey.multiply(c_i_int).mod(qmod)).mod(qmod);
         var sig = context.myEphPrivKey.signStringWithSHA256(c_i_hashed);
 
-        result.update["sessionKey"] = sha256.hex(n);
+        result.update["sessionKey"] = cryptico.sha256.hex(n);
         result.update["nonce"] = nonces;
         result.update["sconf"] = sconf;
         result.update["d_i"] = d_i;
@@ -399,7 +399,7 @@ define(['jquery', 'cryptico'], function($) {
             return result;
         }
 
-        var pk = cryptico.publicKeyFromString(context.ephPubKeys[peer]);
+        var pk = cryptico.cryptico.publicKeyFromString(context.ephPubKeys[peer]);
 
         if (!pk.verifyString(context.c_i, msg[1])) {
             result["status"] = "SIGNATURE VERIFYING FAILED";
@@ -532,7 +532,7 @@ define(['jquery', 'cryptico'], function($) {
 
         this.sendMessage = function (text) {
             // TODO: think about keylength 64
-            var encryptedText = cryptico.encryptAESCBC(
+            var encryptedText = cryptico.cryptico.encryptAESCBC(
                 text,
                 this.sessionKey.slice(0, 32)
             );
@@ -544,7 +544,7 @@ define(['jquery', 'cryptico'], function($) {
             data["data"] = encryptedText;
             // OldBlue starts
             data["parentsIDs"] = this.client.frontier.slice();
-            data["messageID"] = sha256.hex(
+            data["messageID"] = cryptico.sha256.hex(
                 this.client.peer.id +
                 this.client.frontier.toString() +
                 encryptedText
@@ -640,7 +640,7 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.decryptMessage = function (text) {
-            return cryptico.decryptAESCBC(text, this.sessionKey.slice(0, 32));
+            return cryptico.cryptico.decryptAESCBC(text, this.sessionKey.slice(0, 32));
         };
 
         this.receive = function (author, msg) {
@@ -730,7 +730,7 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.checkSig = function (data, peer) {
-            var pk = cryptico.publicKeyFromString(this.ephPubKeys[peer]);
+            var pk = cryptico.cryptico.publicKeyFromString(this.ephPubKeys[peer]);
             var keys = Object.keys(data);
             keys.splice(keys.indexOf('sig'), 1);
             keys = keys.sort();
@@ -746,7 +746,7 @@ define(['jquery', 'cryptico'], function($) {
         this.sendShutdown = function () {
             // TODO: think about keylength 64
             var secret = JSON.stringify(this.myEphPrivKey);
-            var encryptedText = cryptico.encryptAESCBC(
+            var encryptedText = cryptico.cryptico.encryptAESCBC(
                 secret,
                 this.sessionKey.slice(0, 32)
             );
@@ -816,7 +816,7 @@ define(['jquery', 'cryptico'], function($) {
          * Adds event listener to the event
          * @param {String} name name of event
          * @param {function} callback event handler
-         * @param {Boolean} oneOff only run once?
+         * @param {Boolean=} oneOff only run once?
          */
         this.subscribeOnEvent = function(name, callback, oneOff) {
             if (!this.on[name]) {
