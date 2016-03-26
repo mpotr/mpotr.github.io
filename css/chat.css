@@ -1,0 +1,65 @@
+.chat {
+    position: relative;
+    margin: auto;
+    padding: 3%;
+    width: 90%;
+    height: 90vh;
+    border: 1px solid black;
+    justify-content: space-between;
+    display: flex;
+}
+
+.chatMessages {
+    position: relative;
+    padding: inherit;
+    width: 60%;
+    height: 100%;
+    display: inline-block;
+    border: 1px solid black;
+}
+
+.chatContacts {
+    position: relative;
+    padding: inherit;
+    width: 35%;
+    height: 100%;
+    align-content: center;
+    display: inline-block;
+    border: 1px solid black;
+}
+
+.chatWindow {
+    position: relative;
+    text-align: right;
+    background-color: white;
+    height: 80%;
+}
+
+.chatMessageWindow {
+    position: relative;
+    text-align: left;
+    width: 90%;
+    display: inline-block;
+    resize: none;
+}
+
+.chatContactList {
+    position: relative;
+    height: 50%;
+    width: 100%;
+    margin-top: 5%;
+    overflow: hidden;
+    overflow-y: scroll;
+}
+
+.chatTextPlusButton, .chatLabelPlusButton {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    height: 10%;
+    margin: 3%;
+}
+
+.chatLabelPlusButton {
+    height: 30px;
+}
