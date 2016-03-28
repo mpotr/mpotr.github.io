@@ -56,7 +56,7 @@ define(['jquery', 'cryptico'], function($) {
 
     /**
      * Generates RSA key pair
-     * @param {type} length Key length
+     * @param {string} length Key length
      * @returns {Array} [PrivateKey, PublicKey]
      */
     var generatePair = function (length) {
@@ -78,7 +78,7 @@ define(['jquery', 'cryptico'], function($) {
 
     /**
      * TODO
-     * @param {type} length
+     * @param {string} length
      * @returns {Array}
      */
     var generateExpPair = function (length) {
@@ -476,6 +476,10 @@ define(['jquery', 'cryptico'], function($) {
             this.d_i = undefined;
             this.sig = undefined;
             this.c_i = undefined;
+            this.client.frontier = [];
+            this.client.lostMsg = [];
+            this.client.delivered = [];
+            this.client.undelivered = [];
             $.map(this.rounds, function(x) { x.reset(); });
         };
         this.reset();

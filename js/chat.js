@@ -23,6 +23,10 @@ require(['jquery', 'client'], function($, client) {
     };
 
     $('#sendMessage').on('click', function () {
+        if (client.blockChat) {
+            return;
+        }
+        
         var msgBox = $('#messageText');
         var message = escape(msgBox.val());
 

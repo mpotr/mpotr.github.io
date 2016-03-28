@@ -16,6 +16,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         undelivered: [],
         friends: [],
         on: {},
+        blockChat: false,
 
         /**
          * Initialization of peer
@@ -63,12 +64,13 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 });
             }
 
-            this.context.subscribeOnEvent('shutdown', function() {
-                client.frontier = [];
-                client.lostMsg = [];
-                client.delivered = [];
-                client.undelivered = [];
+            this.context.subscribeOnEvent('shutdown', () => {
+                client.blockChat = false;
             });
+            
+            this.context.subscribeOnEvent('blockChat', () => {
+                client.blockChat = true;
+            })
         },
 
         /**
