@@ -845,13 +845,13 @@ define(['jquery', 'cryptico'], function($) {
          */
         this.emitEvent = function(name, args) {
             if (this.on[name]) {
-                this.on[name].forEach(function (elem) {
+                this.on[name].forEach((elem) => {
                     elem.apply(this, args);
                 });
             }
 
             if (this._oneOff[name]) {
-                this._oneOff[name].forEach(function (elem) {
+                this._oneOff[name].forEach((elem) => {
                     let idx = this.on[name].indexOf(elem);
 
                     if (idx > -1) {
