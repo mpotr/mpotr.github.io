@@ -78,7 +78,10 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          */
         chatDisconnect: function () {
             if (!this.peer.disconnected || !this.peer.destroyed) {
-                this.context.stopChat();
+                if (this.context.status === "chat") {
+                    this.context.stopChat();
+                }
+                
                 // TODO: Think about validation
                 setTimeout(() => {
                     this.peer.destroy();
@@ -192,6 +195,14 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             }, {peer: ''});
 
             return leaderFromConnPool.peer < this.peer.id;
+        },
+
+        /**
+         * Checks whether there is known lost messages
+         * @returns {boolean}
+         */
+        isChatSynced: function () {
+            return this.lostMsg.length === 0 && this.undelivered.length === 0;
         }
     };
 
@@ -234,6 +245,37 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                     console.log("info", "mpOTRContext reset");
                 }
                 break;
+            case "chatSyncReq":
+                if (!client.context.checkSig(data, data["from"])) {
+                    alert("Signature check fail");
+                }
+
+                client.context.emitEvent("blockChat");
+
+                client.context.subscribeOnEvent("chatSynced", () => {
+                    // send message to the sync boy
+                    let message = {
+                        "type": "chatSyncRes",
+                        "from": client.peer.id
+                    };
+                    message["sig"] = client.context.signMessage(message);
+
+                    this.send(message);
+                }, true);
+
+                if (client.isChatSynced()) {
+                    client.context.emitEvent("chatSynced");
+                } else {
+                    client.context.deliveryRequest();
+                }
+            break;
+            case "chatSyncRes":
+                if (!client.context.checkSig(data, data["from"])) {
+                    alert("Signature check fail");
+                }
+
+                client.context.emitEvent("chatSyncRes", [this.peer]);
+            break;
             default:
                 // TODO: Something more adequate
                 alert("Error: unexpected message type");
@@ -247,22 +289,22 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      * from peer.connections property
      */
     function handleDisconnect(conn, callback) {
-        var idx = client.connPool.indexOf(conn);
-
-        if (idx > -1) {
-            client.connPool.remove(conn);
-            delete client.peer.connections[conn.peer];
-        }
+        client.connPool.remove(conn);
+        delete client.peer.connections[conn.peer];
 
         if (callback) {
             callback();
         }
 
-        if (client.context.status === "chat" && client.amILeader()) {
-            client.context.subscribeOnEvent('shutdown', function() {
-                client.context.start();
-            }, true);
-            client.context.sendShutdown();
+        if (client.context.status === "chat") {
+            client.context.emitEvent("blockChat");
+
+            if (client.amILeader()) {
+                client.context.subscribeOnEvent('shutdown', function() {
+                    client.context.start();
+                }, true);
+                client.context.stopChat();
+            }
         }
     }
 

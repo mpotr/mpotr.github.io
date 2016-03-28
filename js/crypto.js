@@ -444,7 +444,8 @@ define(['jquery', 'cryptico'], function($) {
                 this.client.sendMessage(["init"], "mpOTR");
                 this.emitEvent("init");
             } else {
-                this.emitEvent('shutdown');
+                alert("No peers were added");
+                this.emitEvent("shutdown");
             }
         };
 
@@ -641,6 +642,10 @@ define(['jquery', 'cryptico'], function($) {
                 }
             }
             // oldBlue ends
+
+            if (client.isChatSynced()) {
+                client.context.emitEvent("chatSynced");
+            }
         };
 
         this.decryptMessage = function (text) {
@@ -796,22 +801,59 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.stopChat = function () {
-            process(this, function (context) {
-                return context.sendShutdown();
+            var promises = [];
+            var resolves = {};
+            var data = {
+                "type": "chatSyncReq",
+                "from": this.client.peer.id
+            };
+            data["sig"] = this.signMessage(data);
+
+            this.emitEvent('blockChat');
+
+            promises.push(new Promise((resolve) => {
+                this.subscribeOnEvent('chatSynced', resolve, true);
+                this.deliveryRequest();
+            }));
+
+            for (let conn of this.client.connPool) {
+                promises.push(new Promise((resolve) => {
+                    resolves[conn.peer] = resolve;
+                }))
+            }
+
+            this.subscribeOnEvent("chatSyncRes", (id) => {
+                resolves[id]();
             });
+
+            this.subscribeOnEvent("shutdown", () => {
+                this.client.blockChat = false;
+            }, true);
+
+            Promise.all(promises).then(() => {
+                this.clearEventListeners("chatSyncRes");
+                process(this, function (context) {
+                    return context.sendShutdown();
+                });
+            });
+
+            if (this.client.isChatSynced()) {
+                this.emitEvent("chatSynced");
+            } else {
+                this.deliveryRequest();
+            }
+
+            this.client.broadcast(data);
         };
 
         /**
-         * Events handling. For future using
+         * Events handlers for subscribe / emit system
          */
-        this.on = {
-            init: [],
-            shutdown: [],
-            canRead: []
-        };
+        this.on = {};
 
         /**
          * Used for callbacks that must be triggered once
+         * in subscribe / emit system
          * @private
          */
         this._oneOff = {};

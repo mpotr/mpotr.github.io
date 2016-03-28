@@ -18,7 +18,8 @@ require.config({
 require(['jquery', 'client'], function($, client) {
     "use strict";
 
-    $('body').onunload = function() {
+    $('body').onbeforeunload = function() {
+        // TODO: Panic! Public keys!
         client.chatDisconnect();
     };
 
@@ -72,7 +73,7 @@ require(['jquery', 'client'], function($, client) {
         var $mpOTR = $("#mpOTR");
         
         if ($mpOTR.text() === "stop mpOTR") {
-            client.context.sendShutdown();
+            client.context.stopChat();
             $mpOTR.text("start mpOTR");
         } else {
             $mpOTR.text("stop mpOTR");
