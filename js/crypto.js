@@ -442,10 +442,10 @@ define(['jquery', 'cryptico'], function($) {
             if (this.client.connPool.length > 0) {
                 this["round"] = 0;
                 this.client.sendMessage(["init"], "mpOTR");
-                this.emitEvent("init");
+                this.emitEvent(this.EVENTS.INIT);
             } else {
                 alert("No peers were added");
-                this.emitEvent("shutdown");
+                this.emitEvent(this.EVENTS.SHUTDOWN);
             }
         };
 
@@ -635,8 +635,8 @@ define(['jquery', 'cryptico'], function($) {
             }
             // oldBlue ends
 
-            if (client.isChatSynced()) {
-                client.context.emitEvent("chatSynced");
+            if (this.client.isChatSynced()) {
+                this.emitEvent(this.EVENTS.CHAT_SYNCED);
             }
         };
 
@@ -651,7 +651,7 @@ define(['jquery', 'cryptico'], function($) {
                         return context.rounds[0].send(context);
                     });
                     log("info", "init received");
-                    this.emitEvent('init');
+                    this.emitEvent(this.EVENTS.INIT);
                     this["status"] = "auth";
                     break;
                 case "auth":
@@ -801,10 +801,10 @@ define(['jquery', 'cryptico'], function($) {
             var promises = [];
             var resolves = {};
 
-            this.emitEvent('blockChat');
+            this.emitEvent(this.EVENTS.BLOCK_CHAT);
 
             promises.push(new Promise((resolve) => {
-                this.subscribeOnEvent('chatSynced', resolve, true);
+                this.subscribeOnEvent(this.EVENTS.CHAT_SYNCED, resolve, true);
                 this.deliveryRequest();
             }));
 
@@ -814,23 +814,23 @@ define(['jquery', 'cryptico'], function($) {
                 }))
             }
 
-            this.subscribeOnEvent("chatSyncRes", (id) => {
+            this.subscribeOnEvent(this.EVENTS.CHAT_SYNC_RES, (id) => {
                 resolves[id]();
             });
 
-            this.subscribeOnEvent("shutdown", () => {
+            this.subscribeOnEvent(this.EVENTS.SHUTDOWN, () => {
                 this.client.blockChat = false;
             }, true);
 
             Promise.all(promises).then(() => {
-                this.clearEventListeners("chatSyncRes");
+                this.clearEventListeners(this.EVENTS.CHAT_SYNC_RES);
                 process(this, function (context) {
                     return context.sendShutdown();
                 });
             });
 
             if (this.client.isChatSynced()) {
-                this.emitEvent("chatSynced");
+                this.emitEvent(this.EVENTS.CHAT_SYNCED);
             } else {
                 this.deliveryRequest();
             }
@@ -911,7 +911,21 @@ define(['jquery', 'cryptico'], function($) {
             this._oneOff[name] = [];
         };
 
-        this.subscribeOnEvent('shutdown', function() {
+        /**
+         * Still don't have enums in JS :(
+         */
+        this.EVENTS = {
+            INIT: 'Init',
+            SHUTDOWN: 'Shutdown',
+            BLOCK_CHAT: 'BlockChat',
+            CHAT_SYNCED: 'ChatSynced',
+            CHAT_SYNC_REQ: "ChatSyncReq",
+            CHAT_SYNC_RES: "ChatSyncRes",
+            CONN_POOL_ADD: "ConnPoolAdd",
+            CONN_POOL_REMOVE: "ConnPoolRemove"
+        };
+
+        this.subscribeOnEvent(this.EVENTS.SHUTDOWN, function() {
             this.reset();
         })
     }

@@ -39,7 +39,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             if (!this.connPool.add) {
                 Object.defineProperty(this.connPool, "add", {
                     value: function(elem) {
-                        client.context.emitEvent('connPoolAdd');
+                        client.context.emitEvent(client.context.EVENTS.CONN_POOL_ADD);
                         this.push(elem);
 
                         return this;
@@ -53,7 +53,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                         var idx = this.indexOf(elem);
 
                         if (idx > -1) {
-                            client.context.emitEvent('connPoolRemove');
+                            client.context.emitEvent(client.context.EVENTS.CONN_POOL_REMOVE);
                             this.splice(idx, 1);
 
                             return elem;
@@ -64,11 +64,11 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 });
             }
 
-            this.context.subscribeOnEvent('shutdown', () => {
+            this.context.subscribeOnEvent(this.context.EVENTS.SHUTDOWN, () => {
                 client.blockChat = false;
             });
             
-            this.context.subscribeOnEvent('blockChat', () => {
+            this.context.subscribeOnEvent(this.context.EVENTS.BLOCK_CHAT, () => {
                 client.blockChat = true;
             })
         },
@@ -239,14 +239,14 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 break;
             case "mpOTRShutdown":
                 if (client.context.receiveShutdown(data)) {
-                    client.context.emitEvent('shutdown');
+                    client.context.emitEvent(client.context.EVENTS.SHUTDOWN);
                     console.log("info", "mpOTRContext reset");
                 }
                 break;
             case "chatSyncReq":
-                client.context.emitEvent("blockChat");
+                client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
 
-                client.context.subscribeOnEvent("chatSynced", () => {
+                client.context.subscribeOnEvent(client.context.EVENTS.CHAT_SYNCED, () => {
                     // send message to the sync boy
                     let message = {
                         "type": "chatSyncRes",
@@ -258,13 +258,13 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }, true);
 
                 if (client.isChatSynced()) {
-                    client.context.emitEvent("chatSynced");
+                    client.context.emitEvent(client.context.EVENTS.CHAT_SYNCED);
                 } else {
                     client.context.deliveryRequest();
                 }
             break;
             case "chatSyncRes":
-                client.context.emitEvent("chatSyncRes", [this.peer]);
+                client.context.emitEvent(client.context.EVENTS.CHAT_SYNC_RES, [this.peer]);
             break;
             default:
                 // TODO: Something more adequate
@@ -287,10 +287,10 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         }
 
         if (client.context.status === "chat") {
-            client.context.emitEvent("blockChat");
+            client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
 
             if (client.amILeader()) {
-                client.context.subscribeOnEvent('shutdown', function() {
+                client.context.subscribeOnEvent(client.context.EVENTS.SHUTDOWN, function() {
                     client.context.start();
                 }, true);
                 client.context.stopChat();

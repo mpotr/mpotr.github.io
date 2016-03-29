@@ -151,11 +151,11 @@ require(['jquery', 'client'], function($, client) {
                 close: updateContactList
             });
 
-        client.context.subscribeOnEvent('init', function() {
+        client.context.subscribeOnEvent(client.context.EVENTS.INIT, function() {
             $("#mpOTR").text("stop mpOTR");
         });
 
-        client.context.subscribeOnEvent('shutdown', function() {
+        client.context.subscribeOnEvent(client.context.EVENTS.SHUTDOWN, function() {
             $("#mpOTR").text("start mpOTR");
         });
 
