@@ -496,7 +496,7 @@ define(['jquery', 'cryptico'], function($) {
 
             for (var id of this.client.lostMsg) {
                 data["lostMsgID"] = id;
-                data['sig'] = this.signMessage(data);
+                this.signMessage(data);
 
                 this.client.broadcast(data);
             }
@@ -554,7 +554,7 @@ define(['jquery', 'cryptico'], function($) {
                 this.client.frontier.toString() +
                 encryptedText
             );
-            data["sig"] = this.signMessage(data);
+            this.signMessage(data);
             // self-deliver
             this.receiveMessage(data);
             // OldBlue ends
@@ -726,6 +726,10 @@ define(['jquery', 'cryptico'], function($) {
             }
         };
 
+        /**
+         * Takes object, signs it and adds property 'sig'
+         * @param {object} data Object to sign
+         */
         this.signMessage = function (data) {
             var keys = Object.keys(data);
             keys.sort();
@@ -735,7 +739,7 @@ define(['jquery', 'cryptico'], function($) {
                 result += data[keys[i]];
             }
 
-            return this.myEphPrivKey.signStringWithSHA256(result);
+            data['sig'] = this.myEphPrivKey.signStringWithSHA256(result);
         };
 
         this.checkSig = function (data, peer) {
@@ -765,7 +769,9 @@ define(['jquery', 'cryptico'], function($) {
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
-            data["sig"] = this.signMessage(data);
+            this.signMessage(data);
+
+            this.client.broadcast(data);
 
             var result = {
                 "status": "OK",
@@ -774,8 +780,6 @@ define(['jquery', 'cryptico'], function($) {
                 }
             };
 
-            this.client.broadcast(data);
-
             return result;
         };
 
@@ -783,6 +787,7 @@ define(['jquery', 'cryptico'], function($) {
             if (this["status"] == "not started") {
                 return false;
             }
+
             if (!this.checkSig(msg, msg["from"])) {
                 log("alert", "Signature checking failure!");
                 return false;
@@ -797,6 +802,7 @@ define(['jquery', 'cryptico'], function($) {
             log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
 
             this.shutdown_received += 1;
+
             return this.shutdown_received === this.client.connPool.length;
         };
 
@@ -807,7 +813,7 @@ define(['jquery', 'cryptico'], function($) {
                 "type": "chatSyncReq",
                 "from": this.client.peer.id
             };
-            data["sig"] = this.signMessage(data);
+            this.signMessage(data);
 
             this.emitEvent('blockChat');
 

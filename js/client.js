@@ -258,7 +258,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                         "type": "chatSyncRes",
                         "from": client.peer.id
                     };
-                    message["sig"] = client.context.signMessage(message);
+                    client.context.signMessage(message);
 
                     this.send(message);
                 }, true);
