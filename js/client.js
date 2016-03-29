@@ -213,7 +213,13 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      * @param {Object} data message received
      */
     function handleMessage(data) {
-        // TODO: send ACK
+        // TODO: Add sid check
+        if (data["type"] !== "unencrypted" && data["type"] !== "mpOTR") {
+            if (!client.context.checkSig(data, this.peer)) {
+                alert("Signature check fail");
+            }
+        }
+
         switch (data["type"]) {
             case "unencrypted":
                 client.writeToChat(this.peer, data["data"]);
@@ -222,10 +228,6 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 client.context.receive(this.peer, data["data"]);
                 break;
             case "mpOTRChat":
-                if (this.peer !== data["from"]) {
-                    console.log('alert', "Senders id don't match");
-                }
-
                 client.context.receiveMessage(data);
                 break;
             case "mpOTRLostMessage":
@@ -236,27 +238,19 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }
                 break;
             case "mpOTRShutdown":
-                if (this.peer !== data["from"]) {
-                    console.log('alert', "Senders id don't match");
-                }
-
                 if (client.context.receiveShutdown(data)) {
                     client.context.emitEvent('shutdown');
                     console.log("info", "mpOTRContext reset");
                 }
                 break;
             case "chatSyncReq":
-                if (!client.context.checkSig(data, data["from"])) {
-                    alert("Signature check fail");
-                }
-
                 client.context.emitEvent("blockChat");
 
                 client.context.subscribeOnEvent("chatSynced", () => {
                     // send message to the sync boy
                     let message = {
                         "type": "chatSyncRes",
-                        "from": client.peer.id
+                        "sid": client.context.sid
                     };
                     client.context.signMessage(message);
 
@@ -270,10 +264,6 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }
             break;
             case "chatSyncRes":
-                if (!client.context.checkSig(data, data["from"])) {
-                    alert("Signature check fail");
-                }
-
                 client.context.emitEvent("chatSyncRes", [this.peer]);
             break;
             default:

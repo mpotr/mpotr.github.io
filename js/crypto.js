@@ -490,9 +490,10 @@ define(['jquery', 'cryptico'], function($) {
          * a lost message in response
          */
         this.deliveryRequest = function () {
-            var data = {};
-            data["type"] = "mpOTRLostMessage";
-            data["from"] = this.client.peer.id;
+            var data = {
+                "type": "mpOTRLostMessage",
+                "sid": this.sid
+            };
 
             for (var id of this.client.lostMsg) {
                 data["lostMsgID"] = id;
@@ -506,17 +507,12 @@ define(['jquery', 'cryptico'], function($) {
          * Searches a lost message in message pools.
          * Will return the lost message if founds one.
          * Otherwise returns undefined.
-         * @param data delivery request
-         * @returns {Message}
+         * @param {object} data Message delivery request
+         * @returns {object} Message delivery response
          */
         this.deliveryResponse = function (data) {
-            var idx;
-            if (!this.checkSig(data, data['from'])) {
-                log('alert', "Signature check failure");
-            }
-
             // Searching in undelivered messages
-            idx = this.client.undelivered.map(function (elem) {
+            var idx = this.client.undelivered.map(function (elem) {
                 return elem["messageID"];
             }).indexOf(data["lostMsgID"]);
             if (idx !== -1) {
@@ -563,10 +559,6 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         this.receiveMessage = function (data) {
-            if (!this.checkSig(data, data["from"])) {
-                log("alert", "Signature checking failure!");
-            }
-
             // OldBlue
 
             // Ignore duplicates
@@ -731,12 +723,16 @@ define(['jquery', 'cryptico'], function($) {
          * @param {object} data Object to sign
          */
         this.signMessage = function (data) {
+            if ("sig" in data) {
+                delete data["sig"];
+            }
+
             var keys = Object.keys(data);
             keys.sort();
 
             var result = "";
-            for (var i in keys) {
-                result += data[keys[i]];
+            for (let key of keys) {
+                result += data[key];
             }
 
             data['sig'] = this.myEphPrivKey.signStringWithSHA256(result);
@@ -749,8 +745,8 @@ define(['jquery', 'cryptico'], function($) {
             keys = keys.sort();
 
             var result = "";
-            for (var i in keys) {
-                result += data[keys[i]];
+            for (let key of keys) {
+                result += data[key];
             }
 
             return pk.verifyString(result, data["sig"]);
@@ -788,11 +784,6 @@ define(['jquery', 'cryptico'], function($) {
                 return false;
             }
 
-            if (!this.checkSig(msg, msg["from"])) {
-                log("alert", "Signature checking failure!");
-                return false;
-            }
-
             if (!this.shutdown_sended) {
                 process(this, function (context) {
                     return context.sendShutdown();
@@ -809,11 +800,6 @@ define(['jquery', 'cryptico'], function($) {
         this.stopChat = function () {
             var promises = [];
             var resolves = {};
-            var data = {
-                "type": "chatSyncReq",
-                "from": this.client.peer.id
-            };
-            this.signMessage(data);
 
             this.emitEvent('blockChat');
 
@@ -848,6 +834,12 @@ define(['jquery', 'cryptico'], function($) {
             } else {
                 this.deliveryRequest();
             }
+
+            var data = {
+                "type": "chatSyncReq",
+                "sid": this.sid
+            };
+            this.signMessage(data);
 
             this.client.broadcast(data);
         };
