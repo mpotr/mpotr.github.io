@@ -39,8 +39,8 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             if (!this.connPool.add) {
                 Object.defineProperty(this.connPool, "add", {
                     value: function(elem) {
-                        client.context.emitEvent(client.context.EVENTS.CONN_POOL_ADD);
                         this.push(elem);
+                        client.context.emitEvent(client.context.EVENTS.CONN_POOL_ADD);
 
                         return this;
                     }
@@ -53,8 +53,8 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                         var idx = this.indexOf(elem);
 
                         if (idx > -1) {
-                            client.context.emitEvent(client.context.EVENTS.CONN_POOL_REMOVE);
                             this.splice(idx, 1);
+                            client.context.emitEvent(client.context.EVENTS.CONN_POOL_REMOVE);
 
                             return elem;
                         }
@@ -246,6 +246,15 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             case "chatSyncReq":
                 client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
 
+                // Removing 'dead' connections
+                let toDel = client.connPool.filter((elem) => {
+                    return data['connPool'].indexOf(elem.peer) === -1;
+                });
+                
+                for (let elem of toDel) {
+                    client.connPool.remove(elem);
+                }
+
                 client.context.subscribeOnEvent(client.context.EVENTS.CHAT_SYNCED, () => {
                     // send message to the sync boy
                     let message = {
@@ -280,7 +289,6 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      */
     function handleDisconnect(conn, callback) {
         client.connPool.remove(conn);
-        delete client.peer.connections[conn.peer];
 
         if (callback) {
             callback();
@@ -288,6 +296,12 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
         if (client.context.status === "chat") {
             client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
+
+            if (client.connPool.length === 0) {
+                client.context.emitEvent(client.context.EVENTS.SHUTDOWN);
+                console.log("info", "mpOTRContext reset");
+                return;
+            }
 
             if (client.amILeader()) {
                 client.context.subscribeOnEvent(client.context.EVENTS.SHUTDOWN, function() {

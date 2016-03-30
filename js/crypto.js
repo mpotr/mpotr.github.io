@@ -805,7 +805,6 @@ define(['jquery', 'cryptico'], function($) {
 
             promises.push(new Promise((resolve) => {
                 this.subscribeOnEvent(this.EVENTS.CHAT_SYNCED, resolve, true);
-                this.deliveryRequest();
             }));
 
             for (let conn of this.client.connPool) {
@@ -818,10 +817,6 @@ define(['jquery', 'cryptico'], function($) {
                 resolves[id]();
             });
 
-            this.subscribeOnEvent(this.EVENTS.SHUTDOWN, () => {
-                this.client.blockChat = false;
-            }, true);
-
             Promise.all(promises).then(() => {
                 this.clearEventListeners(this.EVENTS.CHAT_SYNC_RES);
                 process(this, function (context) {
@@ -829,19 +824,19 @@ define(['jquery', 'cryptico'], function($) {
                 });
             });
 
+            var data = {
+                "type": "chatSyncReq",
+                "sid": this.sid,
+                "connPool": this.client.connPool.map(elem => elem['peer']) + [this.client.peer.id]
+            };
+            this.signMessage(data);
+            this.client.broadcast(data);
+
             if (this.client.isChatSynced()) {
                 this.emitEvent(this.EVENTS.CHAT_SYNCED);
             } else {
                 this.deliveryRequest();
             }
-
-            var data = {
-                "type": "chatSyncReq",
-                "sid": this.sid
-            };
-            this.signMessage(data);
-
-            this.client.broadcast(data);
         };
 
         /**
