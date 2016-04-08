@@ -70,13 +70,11 @@ require(['jquery', 'client'], function($, client) {
     });
 
     $("#mpOTR").on("click", function() {
-        var $mpOTR = $("#mpOTR");
-        
-        if ($mpOTR.text() === "stop mpOTR") {
+        if (this.innerText === "stop mpOTR") {
             client.context.stopChat();
-            $mpOTR.text("start mpOTR");
+            this.innerText = "start mpOTR";
         } else {
-            $mpOTR.text("stop mpOTR");
+            this.innerText = "stop mpOTR";
             client.context.start();
         }
     });
@@ -89,7 +87,7 @@ require(['jquery', 'client'], function($, client) {
     function writeToChat(author, message) {
         // TODO: Add this function to client
         var msg = document.createElement('code');
-        $(msg).text(author + ': ' + unescape(message) + '\n');
+        msg.innerText = author + ': ' + unescape(message) + '\n';
         var $chat = $('#chat');
         $chat.append(msg);
         // Autoscroll
@@ -134,6 +132,7 @@ require(['jquery', 'client'], function($, client) {
 
     $("#init").on("click", function () {
         var peerID = $("#nickname").val();
+        var $mpOTR = $("#mpOTR");
 
         client.init(
             peerID,
@@ -152,11 +151,11 @@ require(['jquery', 'client'], function($, client) {
             });
 
         client.context.subscribeOnEvent(client.context.EVENTS.INIT, function() {
-            $("#mpOTR").text("stop mpOTR");
+            $mpOTR.text("stop mpOTR");
         });
 
         client.context.subscribeOnEvent(client.context.EVENTS.SHUTDOWN, function() {
-            $("#mpOTR").text("start mpOTR");
+            $mpOTR.text("start mpOTR");
         });
 
         if (localStorage[peerID]) {
