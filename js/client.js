@@ -38,9 +38,21 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
             if (!this.connPool.add) {
                 Object.defineProperty(this.connPool, "add", {
-                    value: function(elem) {
-                        this.push(elem);
-                        client.context.emitEvent(client.context.EVENTS.CONN_POOL_ADD);
+                    value: function(newConn) {
+                        let idx = this.map(conn => conn.peer).indexOf(newConn.peer);
+
+                        if (idx === -1) {
+                            this.push(newConn);
+                        } else if (this[idx].id > newConn.id) {
+                            newConn.close();
+                            return;
+                        } else {
+                            this[idx].off("close");
+                            this[idx].close();
+                            this.splice(idx, 1);
+                            this.push(newConn);
+                        }
+                        client.context.emitEvent(client.context.EVENTS.CONN_POOL_ADD, [newConn]);
 
                         return this;
                     }
@@ -70,7 +82,14 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             
             this.context.subscribeOnEvent(this.context.EVENTS.BLOCK_CHAT, () => {
                 client.blockChat = true;
-            })
+            });
+
+            this.context.subscribeOnEvent(this.context.EVENTS.CONN_POOL_ADD, (conn) => {
+                conn.send({
+                    "type": "connPoolSync",
+                    "data": this.connPool.map(conn => conn.peer)
+                });
+            });
         },
 
         /**
@@ -91,7 +110,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
         /**
          * Adds peer to connection pool
-         * @param {DataConnection|Peer} anotherPeer New peer or established connection
+         * @param {DataConnection|string} anotherPeer New peer or established connection
          */
         addPeer: function (anotherPeer) {
             var success = (function(self) {
@@ -214,7 +233,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      */
     function handleMessage(data) {
         // TODO: Add sid check
-        if (data["type"] !== "unencrypted" && data["type"] !== "mpOTR") {
+        if (["unencrypted", "mpOTR", "connPoolSync"].indexOf(data["type"]) === -1){
             if (!client.context.checkSig(data, this.peer)) {
                 alert("Signature check fail");
             }
@@ -223,6 +242,11 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
         switch (data["type"]) {
             case "unencrypted":
                 client.writeToChat(this.peer, data["data"]);
+                break;
+            case "connPoolSync":
+                for (let peer of data["data"]) {
+                    client.addPeer(peer);
+                }
                 break;
             case "mpOTR":
                 client.context.receive(this.peer, data["data"]);
