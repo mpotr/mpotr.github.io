@@ -442,10 +442,10 @@ define(['jquery', 'cryptico'], function($) {
             if (this.client.connPool.length > 0) {
                 this["round"] = 0;
                 this.client.sendMessage(["init"], "mpOTR");
-                this.emitEvent(this.EVENTS.INIT);
+                this.emitEvent(this.EVENTS.MPOTR_INIT);
             } else {
                 alert("No peers were added");
-                this.emitEvent(this.EVENTS.SHUTDOWN);
+                this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN);
             }
         };
 
@@ -651,7 +651,7 @@ define(['jquery', 'cryptico'], function($) {
                         return context.rounds[0].send(context);
                     });
                     log("info", "init received");
-                    this.emitEvent(this.EVENTS.INIT);
+                    this.emitEvent(this.EVENTS.MPOTR_INIT);
                     this["status"] = "auth";
                     break;
                 case "auth":
@@ -705,6 +705,7 @@ define(['jquery', 'cryptico'], function($) {
                         this["round"] = undefined;
                         this["status"] = "chat";
                         log("info", "chat");
+                        this.emitEvent(this.EVENTS.MPOTR_START);
                     }
                     break;
                 case "error":
@@ -910,8 +911,9 @@ define(['jquery', 'cryptico'], function($) {
          * Still don't have enums in JS :(
          */
         this.EVENTS = {
-            INIT: 'Init',
-            SHUTDOWN: 'Shutdown',
+            MPOTR_INIT: 'mpOTR Init',
+            MPOTR_START: 'mpOTR Start',
+            MPOTR_SHUTDOWN: 'mpOTR Shutdown',
             BLOCK_CHAT: 'BlockChat',
             CHAT_SYNCED: 'ChatSynced',
             CHAT_SYNC_REQ: "ChatSyncReq",
@@ -920,7 +922,7 @@ define(['jquery', 'cryptico'], function($) {
             CONN_POOL_REMOVE: "ConnPoolRemove"
         };
 
-        this.subscribeOnEvent(this.EVENTS.SHUTDOWN, function() {
+        this.subscribeOnEvent(this.EVENTS.MPOTR_SHUTDOWN, function() {
             this.reset();
         })
     }
