@@ -146,7 +146,9 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                     success(this);
                 });
             } else {
-                success(anotherPeer);
+                anotherPeer.on('open', function() {
+                    success(this);
+                });
             }
         },
 
