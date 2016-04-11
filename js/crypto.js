@@ -899,6 +899,19 @@ define(['jquery', 'cryptico'], function($) {
         };
 
         /**
+         * Removes subscriber from event specified
+         * @param {string} name name of event
+         * @param {function} subscriber subscriber
+         */
+        this.removeSubscriber = function(name, subscriber) {
+            let idx = this.on[name].indexOf(subscriber);
+
+            if (idx > -1) {
+                this.on[name].splice(idx, 1);
+            }
+        };
+
+        /**
          * Clears list of handlers for event specified
          * @param {String} name name of event
          */
