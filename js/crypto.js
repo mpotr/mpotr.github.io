@@ -445,7 +445,7 @@ define(['jquery', 'cryptico'], function($) {
                 this.emitEvent(this.EVENTS.MPOTR_INIT);
             } else {
                 alert("No peers were added");
-                this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN);
+                this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH);
             }
         };
 
@@ -802,6 +802,7 @@ define(['jquery', 'cryptico'], function($) {
             var promises = [];
             var resolves = {};
 
+            this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN_START);
             this.emitEvent(this.EVENTS.BLOCK_CHAT);
 
             promises.push(new Promise((resolve) => {
@@ -926,7 +927,8 @@ define(['jquery', 'cryptico'], function($) {
         this.EVENTS = {
             MPOTR_INIT: 'mpOTR Init',
             MPOTR_START: 'mpOTR Start',
-            MPOTR_SHUTDOWN: 'mpOTR Shutdown',
+            MPOTR_SHUTDOWN_START: 'mpOTR Shutdown Start',
+            MPOTR_SHUTDOWN_FINISH: 'mpOTR Shutdown Finish',
             BLOCK_CHAT: 'BlockChat',
             CHAT_SYNCED: 'ChatSynced',
             CHAT_SYNC_REQ: "ChatSyncReq",
@@ -935,7 +937,7 @@ define(['jquery', 'cryptico'], function($) {
             CONN_POOL_REMOVE: "ConnPoolRemove"
         };
 
-        this.subscribeOnEvent(this.EVENTS.MPOTR_SHUTDOWN, function() {
+        this.subscribeOnEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
             this.reset();
         })
     }

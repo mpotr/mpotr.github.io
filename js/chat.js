@@ -154,7 +154,7 @@ require(['jquery', 'client'], function($, client) {
             $mpOTR.text("stop mpOTR");
         });
 
-        client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_SHUTDOWN, function() {
+        client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
             $mpOTR.text("start mpOTR");
         });
 

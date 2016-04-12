@@ -76,7 +76,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 });
             }
 
-            this.context.subscribeOnEvent(this.context.EVENTS.MPOTR_SHUTDOWN, () => {
+            this.context.subscribeOnEvent(this.context.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
                 client.blockChat = false;
             });
             
@@ -265,7 +265,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 break;
             case "mpOTRShutdown":
                 if (client.context.receiveShutdown(data)) {
-                    client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN);
+                    client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH);
                     console.log("info", "mpOTRContext reset");
                 }
                 break;
@@ -324,14 +324,16 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
 
             if (client.connPool.length === 0) {
-                client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN);
+                client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH);
                 console.log("info", "mpOTRContext reset");
                 return;
             }
 
             if (client.amILeader()) {
-                client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_SHUTDOWN, function() {
-                    client.context.start();
+                client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
+                    setTimeout(() => {
+                        client.context.start();
+                    }, 0);
                 }, true);
                 client.context.stopChat();
             }
