@@ -829,7 +829,7 @@ define(['jquery', 'cryptico'], function($) {
             var data = {
                 "type": "chatSyncReq",
                 "sid": this.sid,
-                "connPool": this.client.connPool.map(elem => elem['peer']) + [this.client.peer.id]
+                "connPool": this.client.connPool.peers.concat(this.client.peer.id)
             };
             this.signMessage(data);
             this.client.broadcast(data);

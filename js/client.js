@@ -279,6 +279,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 });
                 
                 for (let elem of toDel) {
+                    elem.close();
                     client.connPool.remove(elem);
                 }
 
