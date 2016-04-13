@@ -36,13 +36,20 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
             this.context = new mpOTRContext(this);
 
+            if (!this.connPool.peers) {
+                Object.defineProperty(this.connPool, "peers", {
+                    value: []
+                })
+            }
+
             if (!this.connPool.add) {
                 Object.defineProperty(this.connPool, "add", {
                     value: function(newConn) {
-                        let idx = this.map(conn => conn.peer).indexOf(newConn.peer);
+                        let idx = this.peers.indexOf(newConn.peer);
 
                         if (idx === -1) {
                             this.push(newConn);
+                            this.peers.push(newConn.peer);
                         } else if (this[idx].id > newConn.id) {
                             newConn.off("close");
                             newConn.close();
@@ -51,7 +58,9 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                             this[idx].off("close");
                             this[idx].close();
                             this.splice(idx, 1);
+                            this.peers.splice(idx, 1);
                             this.push(newConn);
+                            this.peers.push(newConn.peer);
                         }
                         client.context.emitEvent(client.context.EVENTS.CONN_POOL_ADD, [newConn]);
 
@@ -63,10 +72,11 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             if (!this.connPool.remove) {
                 Object.defineProperty(this.connPool, "remove", {
                     value: function(elem) {
-                        var idx = this.indexOf(elem);
+                        var idx = this.peers.indexOf(elem.peer);
 
                         if (idx > -1) {
                             this.splice(idx, 1);
+                            this.peers.splice(idx, 1);
                             client.context.emitEvent(client.context.EVENTS.CONN_POOL_REMOVE);
 
                             return elem;
@@ -88,7 +98,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             this.context.subscribeOnEvent(this.context.EVENTS.CONN_POOL_ADD, (conn) => {
                 conn.send({
                     "type": "connPoolSync",
-                    "data": this.connPool.map(conn => conn.peer)
+                    "data": this.connPool.peers
                 });
             });
         },
@@ -131,12 +141,18 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             })(this);
 
             if (typeof anotherPeer === "string") {
+                console.log(anotherPeer);
+            } else {
+                console.log(anotherPeer.peer);
+            }
+
+            if (typeof anotherPeer === "string") {
                 if (this.peer.id === anotherPeer) {
                     return;
                 }
 
-                for (let i = 0; i < this.connPool.length; ++i) {
-                    if (this.connPool[i].peer === anotherPeer) {
+                for (let peer of this.connPool.peers) {
+                    if (peer === anotherPeer) {
                         return;
                     }
                 }

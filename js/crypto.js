@@ -690,8 +690,8 @@ define(['jquery', 'cryptico'], function($) {
                     }
                     this.rounds[roundNum]["ready_dict"][author] = true;
                     var allNodesReady = true;
-                    this.client.connPool.forEach(function(conn) {
-                        allNodesReady = allNodesReady && this.rounds[roundNum]["ready_dict"][conn.peer];
+                    this.client.connPool.peers.forEach(function(peer) {
+                        allNodesReady = allNodesReady && this.rounds[roundNum]["ready_dict"][peer];
                     }, this);
                     if (allNodesReady !== true) {
                         break;
@@ -809,9 +809,9 @@ define(['jquery', 'cryptico'], function($) {
                 this.subscribeOnEvent(this.EVENTS.CHAT_SYNCED, resolve, true);
             }));
 
-            for (let conn of this.client.connPool) {
+            for (let peer of this.client.connPool.peers) {
                 promises.push(new Promise((resolve) => {
-                    resolves[conn.peer] = resolve;
+                    resolves[peer] = resolve;
                 }))
             }
 
