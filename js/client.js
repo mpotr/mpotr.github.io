@@ -44,6 +44,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                         if (idx === -1) {
                             this.push(newConn);
                         } else if (this[idx].id > newConn.id) {
+                            newConn.off("close");
                             newConn.close();
                             return;
                         } else {
