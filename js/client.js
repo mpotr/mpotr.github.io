@@ -141,12 +141,6 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
             })(this);
 
             if (typeof anotherPeer === "string") {
-                console.log(anotherPeer);
-            } else {
-                console.log(anotherPeer.peer);
-            }
-
-            if (typeof anotherPeer === "string") {
                 if (this.peer.id === anotherPeer) {
                     return;
                 }
