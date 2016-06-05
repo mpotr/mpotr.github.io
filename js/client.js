@@ -245,13 +245,6 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
      * @param {Object} data message received
      */
     function handleMessage(data) {
-        // TODO: Add sid check
-        if (["unencrypted", "mpOTR", "connPoolSync"].indexOf(data["type"]) === -1){
-            if (!client.context.checkSig(data, this.peer)) {
-                alert("Signature check fail");
-            }
-        }
-
         switch (data["type"]) {
             case "unencrypted":
                 client.writeToChat(this.peer, data["data"]);
@@ -265,9 +258,17 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 client.context.receive(this.peer, data["data"]);
                 break;
             case "mpOTRChat":
+                if (!client.context.checkSig(data, data["from"])) {
+                    alert("Signature check fail");
+                }
+
                 client.context.receiveMessage(data);
                 break;
             case "mpOTRLostMessage":
+                if (!client.context.checkSig(data, this.peer)) {
+                    alert("Signature check fail");
+                }
+
                 var response = client.context.deliveryResponse(data);
 
                 if (response) {
@@ -275,12 +276,20 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }
                 break;
             case "mpOTRShutdown":
+                if (!client.context.checkSig(data, this.peer)) {
+                    alert("Signature check fail");
+                }
+
                 if (client.context.receiveShutdown(data)) {
                     client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH);
                     console.log("info", "mpOTRContext reset");
                 }
                 break;
             case "chatSyncReq":
+                if (!client.context.checkSig(data, this.peer)) {
+                    alert("Signature check fail");
+                }
+
                 client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
 
                 // Removing 'dead' connections
@@ -311,6 +320,10 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
                 }
             break;
             case "chatSyncRes":
+                if (!client.context.checkSig(data, this.peer)) {
+                    alert("Signature check fail");
+                }
+
                 client.context.emitEvent(client.context.EVENTS.CHAT_SYNC_RES, [this.peer]);
             break;
             default:
