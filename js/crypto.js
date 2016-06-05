@@ -516,7 +516,7 @@ define(['jquery', 'cryptico'], function($) {
                 return elem["messageID"];
             }).indexOf(data["lostMsgID"]);
             if (idx !== -1) {
-                return this.client.undelivered[i];
+                return this.client.undelivered[idx];
             }
 
             // Searching in delivered messages
@@ -524,7 +524,7 @@ define(['jquery', 'cryptico'], function($) {
                 return elem["messageID"];
             }).indexOf(data["lostMsgID"]);
             if (idx !== -1) {
-                return this.client.delivered[i];
+                return this.client.delivered[idx];
             }
 
             // Not found
@@ -562,8 +562,11 @@ define(['jquery', 'cryptico'], function($) {
             // OldBlue
 
             // Ignore duplicates
-            if (this.client.delivered.indexOf(data) > -1 ||
-                this.client.undelivered.indexOf(data) > -1) {
+            if (this.client.delivered.filter((elem) => {
+                    return elem["messageID"] === data["messageID"];
+                }).length > 0 || this.client.undelivered.filter((elem) => {
+                    return elem["messageID"] === data["messageID"];
+                }).length > 0) {
                 return;
             }
 
@@ -575,12 +578,11 @@ define(['jquery', 'cryptico'], function($) {
 
             // Lost message delivery request
             for (var id of data["parentsIDs"]) {
-                if (this.client.undelivered.map(function (elem) {
-                        return elem["messageID"];
-                    }).indexOf(id) === -1 &&
-                    this.client.delivered.map(function (elem) {
-                        return elem["messageID"];
-                    }).indexOf(id) === -1) {
+                if (this.client.delivered.filter((elem) => {
+                        return elem["messageID"] === id;
+                    }).length === 0 && this.client.undelivered.filter((elem) => {
+                        return elem["messageID"] === id;
+                    }).length === 0) {
                     this.client.lostMsg.push(id);
                 }
             }
