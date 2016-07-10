@@ -1,4 +1,4 @@
-define(['crypto', 'peerjs'], function(mpOTRContext) {
+define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
     "use strict";
 
     /**
@@ -210,7 +210,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
          * @param {string} message
          */
         writeToChat: function (author, message) {
-            console.log(author + ": " + message);
+            debug.log(author + ": " + message);
         },
 
         /**
@@ -282,7 +282,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
                 if (client.context.receiveShutdown(data)) {
                     client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH);
-                    console.log("info", "mpOTRContext reset");
+                    debug.log("info", "mpOTRContext reset");
                 }
                 break;
             case "chatSyncReq":
@@ -350,7 +350,7 @@ define(['crypto', 'peerjs'], function(mpOTRContext) {
 
             if (client.connPool.length === 0) {
                 client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH);
-                console.log("info", "mpOTRContext reset");
+                debug.log("info", "mpOTRContext reset");
                 return;
             }
 

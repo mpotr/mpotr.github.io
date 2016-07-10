@@ -1,4 +1,4 @@
-define(['jquery', 'cryptico'], function($) {
+define(['jquery', 'debug', 'cryptico'], function($, debug) {
     "use strict";
 
     var len_sid_random = 13;
@@ -8,25 +8,6 @@ define(['jquery', 'cryptico'], function($) {
     var qmod = new BigInteger("1205156213460516294276038011098783037428475274251229971327058470979054415841306114445046929130670807336613570738952006098251824478525291315971365353402504611531367372670536703348123007294680829887020513584624726600189364717085162921889329599071881596888429934762044470097788673059921772650773521873603874984881875042154463169647779984441228936206496905064565147296499973963182632029642323604865192473605840717232357219244260470063729922144429668263448160459816959", 10);
     var pmod = new BigInteger("2410312426921032588552076022197566074856950548502459942654116941958108831682612228890093858261341614673227141477904012196503648957050582631942730706805009223062734745341073406696246014589361659774041027169249453200378729434170325843778659198143763193776859869524088940195577346119843545301547043747207749969763750084308926339295559968882457872412993810129130294592999947926365264059284647209730384947211681434464714438488520940127459844288859336526896320919633919", 10);
     var random = new SecureRandom();
-
-    /**
-     * Simple log function
-     * @param {string} level Message level
-     * @param {string} msg Log message
-     */
-    function log(level, msg) {
-        switch (level) {
-            case "alert":
-                alert(msg);
-                console.log(msg);
-                break;
-            case "info":
-                console.log(msg);
-                break;
-            default:
-                console.log(msg);
-        }
-    }
 
     /**
      * Check obj for being an array or dict.
@@ -415,7 +396,7 @@ define(['jquery', 'cryptico'], function($) {
         if (result["status"] === "OK") {
             my_extend(context, result["update"]);
         } else {
-            log("alert", "mpOTR error: " + result["status"]); // TODO something more adequate
+            debug.log("alert", "mpOTR error: " + result["status"]); // TODO something more adequate
         }
     };
 
@@ -632,7 +613,7 @@ define(['jquery', 'cryptico'], function($) {
                     var msg = this.decryptMessage(candidateToDelivery["data"]);
                     var author = candidateToDelivery["from"];
                     this.client.writeToChat(author, msg);
-                    log("info", "got \"" + msg + "\" from " + author);
+                    debug.log("info", "got \"" + msg + "\" from " + author);
                 }
             }
             // oldBlue ends
@@ -652,14 +633,14 @@ define(['jquery', 'cryptico'], function($) {
                     process(this, function (context) {
                         return context.rounds[0].send(context);
                     });
-                    log("info", "init received");
+                    debug.log("info", "init received");
                     this.emitEvent(this.EVENTS.MPOTR_INIT);
                     this["status"] = "auth";
                     break;
                 case "auth":
                     var roundNum = parseInt(msg[1], 10);
                     if ((this["round"] != roundNum) && !((roundNum == (this["round"] + 1)) && (this.rounds[this["round"]].ready))) {
-                        log("alert", "somebody tries to break chat");
+                        debug.log("alert", "somebody tries to break chat");
                         break;
                     }
                     var round_now = this.rounds[roundNum];
@@ -679,7 +660,7 @@ define(['jquery', 'cryptico'], function($) {
                         this.client.sendMessage(message, "mpOTR")
                     }
 
-                    log("info", this.status);
+                    debug.log("info", this.status);
                     break;
                 case "ready":
                     roundNum = parseInt(msg[1], 10);
@@ -687,7 +668,7 @@ define(['jquery', 'cryptico'], function($) {
                         break;
                     }
                     if (this["round"] != roundNum) {
-                        log("alert", "somebody tries to break chat");
+                        debug.log("alert", "somebody tries to break chat");
                         break;
                     }
                     this.rounds[roundNum]["ready_dict"][author] = true;
@@ -706,17 +687,17 @@ define(['jquery', 'cryptico'], function($) {
                     } else {
                         this["round"] = undefined;
                         this["status"] = "chat";
-                        log("info", "chat");
+                        debug.log("info", "chat");
                         this.emitEvent(this.EVENTS.MPOTR_START);
                     }
                     break;
                 case "error":
                     //TODO: something more adequate
-                    log("alert", "mpOTR error: " + msg);
+                    debug.log("alert", "mpOTR error: " + msg);
                     break;
                 default:
                     //TODO: something more adequate
-                    log("alert", "Unexpected mpOTR type, message: " + msg);
+                    debug.log("alert", "Unexpected mpOTR type, message: " + msg);
                     break;
             }
         };
@@ -793,7 +774,7 @@ define(['jquery', 'cryptico'], function($) {
                 });
             }
 
-            log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
+            debug.log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
 
             this.shutdown_received += 1;
 
