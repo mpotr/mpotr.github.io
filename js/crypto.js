@@ -680,10 +680,10 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                         break;
                     }
                     if (roundNum < 3) {
-                       this["round"] = this["round"] + 1;
-                       process(this, function (context) {
-                           return context.rounds[roundNum + 1].send(context);
-                       });
+                        this["round"] = this["round"] + 1;
+                        process(this, function (context) {
+                            return context.rounds[roundNum + 1].send(context);
+                        });
                     } else {
                         this["round"] = undefined;
                         this["status"] = "chat";
