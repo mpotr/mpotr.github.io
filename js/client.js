@@ -35,6 +35,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                 });
 
             this.context = new mpOTRContext(this);
+            let context = this.context;
 
             if (!this.connPool.peers) {
                 Object.defineProperty(this.connPool, "peers", {
@@ -87,19 +88,65 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                 });
             }
 
-            this.context.subscribeOnEvent(this.context.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
+            context.subscribeOnEvent(context.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
                 client.blockChat = false;
             });
             
-            this.context.subscribeOnEvent(this.context.EVENTS.BLOCK_CHAT, () => {
+            context.subscribeOnEvent(context.EVENTS.BLOCK_CHAT, () => {
                 client.blockChat = true;
             });
 
-            this.context.subscribeOnEvent(this.context.EVENTS.CONN_POOL_ADD, (conn) => {
+            context.subscribeOnEvent(context.EVENTS.CONN_POOL_ADD, (conn) => {
                 conn.send({
-                    "type": "connPoolSync",
+                    "type": context.MSG.CONN_POOL_SYNC,
                     "data": this.connPool.peers
                 });
+            });
+
+            // Subscribing of client message types
+            context.subscribeOnEvent(context.MSG.UNENCRYPTED, (conn, data) => {
+                client.writeToChat(conn.peer, data["data"]);
+            });
+
+            context.subscribeOnEvent(context.MSG.CONN_POOL_SYNC, (conn, data) => {
+                for (let peer of data["data"]) {
+                    client.addPeer(peer);
+                }
+            });
+
+            context.subscribeOnEvent(context.MSG.CHAT_SYNC_REQ, (conn, data) => {
+                if (!context.checkSig(data, conn.peer)) {
+                    alert("Signature check fail");
+                }
+
+                context.emitEvent(context.EVENTS.BLOCK_CHAT);
+
+                // Removing 'dead' connections
+                let toDel = client.connPool.filter((elem) => {
+                    return data['connPool'].indexOf(elem.peer) === -1;
+                });
+
+                for (let elem of toDel) {
+                    elem.close();
+                    client.connPool.remove(elem);
+                }
+
+                context.subscribeOnEvent(context.EVENTS.CHAT_SYNCED, () => {
+                    // send message to the sync boy
+                    let message = {
+                        "type": context.MSG.CHAT_SYNC_RES,
+                        "sid": context.sid
+                    };
+                    context.signMessage(message);
+
+                    conn.send(message);
+                }, true);
+
+                if (client.isChatSynced()) {
+                    context.emitEvent(context.EVENTS.CHAT_SYNCED);
+                } else {
+                    context.deliveryRequest();
+                }
             });
         },
 
@@ -245,90 +292,16 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
      * @param {Object} data message received
      */
     function handleMessage(data) {
-        switch (data["type"]) {
-            case "unencrypted":
-                client.writeToChat(this.peer, data["data"]);
-                break;
-            case "connPoolSync":
-                for (let peer of data["data"]) {
-                    client.addPeer(peer);
-                }
-                break;
-            case "mpOTR":
-                client.context.receive(this.peer, data["data"]);
-                break;
-            case "mpOTRChat":
-                if (!client.context.checkSig(data, data["from"])) {
-                    alert("Signature check fail");
-                }
+        let context = client.context;
 
-                client.context.receiveMessage(data);
-                break;
-            case "mpOTRLostMessage":
-                if (!client.context.checkSig(data, this.peer)) {
-                    alert("Signature check fail");
-                }
+        // Message has come
+        context.emitEvent(context.EVENTS.INCOMING_MSG, [this, data]);
 
-                var response = client.context.deliveryResponse(data);
-
-                if (response) {
-                    this.send(response);
-                }
-                break;
-            case "mpOTRShutdown":
-                if (!client.context.checkSig(data, this.peer)) {
-                    alert("Signature check fail");
-                }
-
-                if (client.context.receiveShutdown(data)) {
-                    client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH);
-                    debug.log("info", "mpOTRContext reset");
-                }
-                break;
-            case "chatSyncReq":
-                if (!client.context.checkSig(data, this.peer)) {
-                    alert("Signature check fail");
-                }
-
-                client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
-
-                // Removing 'dead' connections
-                let toDel = client.connPool.filter((elem) => {
-                    return data['connPool'].indexOf(elem.peer) === -1;
-                });
-                
-                for (let elem of toDel) {
-                    elem.close();
-                    client.connPool.remove(elem);
-                }
-
-                client.context.subscribeOnEvent(client.context.EVENTS.CHAT_SYNCED, () => {
-                    // send message to the sync boy
-                    let message = {
-                        "type": "chatSyncRes",
-                        "sid": client.context.sid
-                    };
-                    client.context.signMessage(message);
-
-                    this.send(message);
-                }, true);
-
-                if (client.isChatSynced()) {
-                    client.context.emitEvent(client.context.EVENTS.CHAT_SYNCED);
-                } else {
-                    client.context.deliveryRequest();
-                }
-            break;
-            case "chatSyncRes":
-                if (!client.context.checkSig(data, this.peer)) {
-                    alert("Signature check fail");
-                }
-
-                client.context.emitEvent(client.context.EVENTS.CHAT_SYNC_RES, [this.peer]);
-            break;
-            default:
-                // TODO: Something more adequate
-                alert("Error: unexpected message type");
+        // Event for specific message types
+        if (context.MSG.hasMsgType(data["type"])) {
+            context.emitEvent(data["type"], [this, data]);
+        } else {
+            debug.log("alert", "Incorrect Message Type: " + data["type"]);
         }
     }
 

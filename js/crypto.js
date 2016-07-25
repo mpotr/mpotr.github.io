@@ -472,7 +472,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          */
         this.deliveryRequest = function () {
             var data = {
-                "type": "mpOTRLostMessage",
+                "type": this.MSG.MPOTR_LOST_MSG,
                 "sid": this.sid
             };
 
@@ -520,7 +520,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             );
 
             var data = {};
-            data["type"] = "mpOTRChat";
+            data["type"] = this.MSG.MPOTR_CHAT;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
@@ -745,7 +745,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             );
 
             var data = {};
-            data["type"] = "mpOTRShutdown";
+            data["type"] = this.MSG.MPOTR_SHUTRDOWN;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
@@ -798,19 +798,24 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 }))
             }
 
-            this.subscribeOnEvent(this.EVENTS.CHAT_SYNC_RES, (id) => {
-                resolves[id]();
+            this.subscribeOnEvent(this.MSG.CHAT_SYNC_RES, (conn, data) => {
+
+                if (!this.checkSig(data, conn.peer)) {
+                    alert("Signature check fail");
+                }
+
+                resolves[conn.peer]();
             });
 
             Promise.all(promises).then(() => {
-                this.clearEventListeners(this.EVENTS.CHAT_SYNC_RES);
+                this.clearEventListeners(this.MSG.CHAT_SYNC_RES);
                 process(this, function (context) {
                     return context.sendShutdown();
                 });
             });
 
             var data = {
-                "type": "chatSyncReq",
+                "type": this.MSG.CHAT_SYNC_REQ,
                 "sid": this.sid,
                 "connPool": this.client.connPool.peers.concat(this.client.peer.id)
             };
@@ -825,37 +830,75 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         };
 
         /**
+         * Possible events in application.
+         */
+        this.EVENTS = {
+            MPOTR_INIT: 'mpOTR Init',
+            MPOTR_START: 'mpOTR Start',
+            MPOTR_SHUTDOWN_START: 'mpOTR Shutdown Start',
+            MPOTR_SHUTDOWN_FINISH: 'mpOTR Shutdown Finish',
+            BLOCK_CHAT: 'BlockChat',
+            CHAT_SYNCED: 'ChatSynced',
+            CONN_POOL_ADD: "ConnPoolAdd",
+            CONN_POOL_REMOVE: "ConnPoolRemove",
+            INCOMING_MSG: "IncomingMessage"
+        };
+
+        /**
+         * Possible message types. Also used as event types for corresponding handlers.
+         */
+        this.MSG = {
+            UNENCRYPTED: "unencrypted",
+            CONN_POOL_SYNC: "connPoolSync",
+            MPOTR_AUTH: "mpOTR",
+            MPOTR_CHAT: "mpOTRChat",
+            MPOTR_LOST_MSG: "mpOTRLostMessage",
+            MPOTR_SHUTRDOWN: "mpOTRShutdown",
+            CHAT_SYNC_REQ: "ChatSyncReq",
+            CHAT_SYNC_RES: "ChatSyncRes"
+        };
+
+        // Making search in MSG easy
+        Object.defineProperty(this.MSG, "_values", {
+            value: []
+        });
+
+        for (let val in this.MSG) {
+            this.MSG._values.push(this.MSG[val]);
+        }
+
+        Object.defineProperty(this.MSG, "hasMsgType", {
+            value: (msg) => {
+                return this.MSG._values.indexOf(msg) > -1;
+            }
+        });
+
+        /**
          * Events handlers for subscribe / emit system
          */
         this.on = {};
 
-        /**
-         * Used for callbacks that must be triggered once
-         * in subscribe / emit system
-         * @private
-         */
-        this._oneOff = {};
+        for (let key in this.EVENTS) {
+            this.on[this.EVENTS[key]] = [];
+        }
+
+        for (let key in this.MSG) {
+            this.on[this.MSG[key]] = [];
+        }
 
         /**
          * Adds event listener to the event
          * @param {String} name name of event
          * @param {function} callback event handler
-         * @param {Boolean=} oneOff only run once?
+         * @param {number=} count how many time run?
+         * @param {String=} tag useful for logical grouping handlers with following massive removing
          */
-        this.subscribeOnEvent = function(name, callback, oneOff) {
-            if (!this.on[name]) {
-                this.on[name] = [];
-            }
-
-            this.on[name].push(callback);
-
-            if (oneOff) {
-                if (!this._oneOff[name]) {
-                    this._oneOff[name] = [];
-                }
-
-                this._oneOff[name].push(callback);
-            }
+        this.subscribeOnEvent = function(name, callback, count, tag) {
+            this.on[name].push({
+                tag: tag ? tag : "",
+                callback: callback,
+                count: count ? count : Infinity
+            });
         };
 
         /**
@@ -864,26 +907,25 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          * @param {Array=} args arguments for event handlers
          */
         this.emitEvent = function(name, args) {
-            if (this.on[name]) {
-                this.on[name].forEach((elem) => {
-                    elem.apply(this, args);
-                });
-            }
+            let toDel = [];
 
-            if (this._oneOff[name]) {
-                this._oneOff[name].forEach((elem) => {
-                    let idx = this.on[name].indexOf(elem);
+            this.on[name].forEach((elem) => {
+                elem.callback.apply(this, args);
+                --elem.count;
 
-                    if (idx > -1) {
-                        this.on[name].splice(idx, 1);
-                    }
-                });
-                this._oneOff[name] = [];
-            }
+                if (elem.count == 0) {
+                    toDel.push(elem);
+                }
+            });
+
+            toDel.forEach((elem) => {
+                let idx = this.on[name].indexOf(elem);
+                this.on[name].splice(idx, 1);
+            });
         };
 
         /**
-         * Removes subscriber from event specified
+         * Removes subscriber of event specified
          * @param {string} name name of event
          * @param {function} subscriber subscriber
          */
@@ -896,33 +938,73 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         };
 
         /**
+         * Removes subscriber of specified event by tag
+         * @param name
+         * @param tag
+         */
+        this.removeSubscriberByTag = function (name, tag) {
+            let toDel = [];
+
+            this.on[name].forEach((elem) => {
+                if (elem.tag === tag) {
+                    toDel.push(elem);
+                }
+            });
+
+            toDel.forEach((elem) => {
+                let idx = this.on[name].indexOf(elem);
+                this.on[name].splice(idx, 1);
+            });
+        };
+
+        /**
          * Clears list of handlers for event specified
          * @param {String} name name of event
          */
         this.clearEventListeners = function(name) {
             this.on[name] = [];
-            this._oneOff[name] = [];
         };
 
-        /**
-         * Still don't have enums in JS :(
-         */
-        this.EVENTS = {
-            MPOTR_INIT: 'mpOTR Init',
-            MPOTR_START: 'mpOTR Start',
-            MPOTR_SHUTDOWN_START: 'mpOTR Shutdown Start',
-            MPOTR_SHUTDOWN_FINISH: 'mpOTR Shutdown Finish',
-            BLOCK_CHAT: 'BlockChat',
-            CHAT_SYNCED: 'ChatSynced',
-            CHAT_SYNC_REQ: "ChatSyncReq",
-            CHAT_SYNC_RES: "ChatSyncRes",
-            CONN_POOL_ADD: "ConnPoolAdd",
-            CONN_POOL_REMOVE: "ConnPoolRemove"
-        };
-
-        this.subscribeOnEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
+        // Reset context on chat shutdown
+        this.subscribeOnEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
             this.reset();
-        })
+        });
+
+        // Handle mpOTR messages
+        this.subscribeOnEvent(this.MSG.MPOTR_AUTH, (conn, data) => {
+            this.receive(conn.peer, data["data"]);
+        });
+
+        this.subscribeOnEvent(this.MSG.MPOTR_CHAT, (conn, data) => {
+            if (!this.checkSig(data, data["from"])) {
+                alert("Signature check fail");
+            }
+
+            this.receiveMessage(data);
+        });
+
+        this.subscribeOnEvent(this.MSG.MPOTR_LOST_MSG, (conn, data) => {
+            if (!this.checkSig(data, conn.peer)) {
+                alert("Signature check fail");
+            }
+
+            var response = this.deliveryResponse(data);
+
+            if (response) {
+                conn.send(response);
+            }
+        });
+
+        this.subscribeOnEvent(this.MSG.MPOTR_SHUTRDOWN, (conn, data) => {
+            if (!this.checkSig(data, conn.peer)) {
+                alert("Signature check fail");
+            }
+
+            if (this.receiveShutdown(data)) {
+                this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH);
+                debug.log("info", "mpOTRContext reset");
+            }
+        });
     }
 
     return mpOTRContext;
