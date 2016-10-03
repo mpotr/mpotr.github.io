@@ -238,11 +238,6 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
     let xor = function (a, b) {
         let result = "";
 
-        if (a.length != b.length) {
-            debug.log("info", "xor() operands have different length");
-            debug.log("info", "a = " + JSON.stringify(a));
-            debug.log("info", "b = " + JSON.stringify(b));
-        }
 
         for (let i = 0; (i < a.length) && (i < b.length); ++i) {
             let c = a.charCodeAt(i);
@@ -777,14 +772,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
             this.client.broadcast(data);
 
-            var result = {
-                "status": "OK",
-                "update": {
-                    "shutdown_sended": true
-                }
-            };
-
-            return result;
+            this.shutdown_sended = true;
         };
 
         this.receiveShutdown = function (msg) {
@@ -793,9 +781,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             }
 
             if (!this.shutdown_sended) {
-                process(this, function (context) {
-                    return context.sendShutdown();
-                });
+                this.sendShutdown();
             }
 
             debug.log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
@@ -833,9 +819,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
             Promise.all(promises).then(() => {
                 this.clearEventListeners(this.MSG.CHAT_SYNC_RES);
-                process(this, function (context) {
-                    return context.sendShutdown();
-                });
+                this.sendShutdown();
             });
 
             var data = {
