@@ -797,7 +797,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             this.emitEvent(this.EVENTS.BLOCK_CHAT);
 
             promises.push(new Promise((resolve) => {
-                this.subscribeOnEvent(this.EVENTS.CHAT_SYNCED, resolve, true);
+                this.subscribeOnEvent(this.EVENTS.CHAT_SYNCED, resolve, 1);
             }));
 
             for (let peer of this.client.connPool.peers) {

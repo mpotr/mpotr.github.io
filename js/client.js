@@ -145,7 +145,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                     context.signMessage(message);
 
                     conn.send(message);
-                }, true);
+                }, 1);
 
                 if (client.isChatSynced()) {
                     context.emitEvent(context.EVENTS.CHAT_SYNCED);
@@ -337,7 +337,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                     setTimeout(() => {
                         client.context.start();
                     }, 0);
-                }, true);
+                }, 1);
                 client.context.stopChat();
             }
         }
