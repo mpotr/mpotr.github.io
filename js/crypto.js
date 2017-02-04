@@ -438,7 +438,6 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          */
         this.start = function() {
             if (this.client.connPool.length > 0) {
-                this["round"] = 1;
                 this.client.sendMessage(["init"], this.MSG.MPOTR_INIT);
                 this.emitEvent(this.EVENTS.MPOTR_INIT);
             } else {
@@ -452,7 +451,6 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          */
         this.reset = function () {
             this["status"] = "not started";
-            this["round"] = 1;
             this.shutdown_received = 0;
             this.shutdown_sended = false;
             this.myLongPubKey = undefined;
@@ -988,14 +986,13 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
         this.subscribeOnEvent(this.EVENTS.MPOTR_INIT, (conn, data) => {
             // Creating new arbiter
-            let arbiter = this.newArbiter();
+            let arbiter = this.AuthenticationPhase();
+
             arbiter.then(() => {
-                alert('Cool!');
+                debug.log('info', 'Success!');
             }).catch((err) => {
-                console.log(err);
-                alert("Trolo!");
+                debug.log('alert', err);
             });
-            // Trying to make Auth
         });
 
         this.subscribeOnEvent(this.MSG.MPOTR_CHAT, (conn, data) => {
@@ -1029,7 +1026,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             }
         });
 
-        this.newArbiter = function () {
+        this.AuthenticationPhase = function () {
             let currentRound = 1;
 
             /**
@@ -1057,8 +1054,19 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 cb["error"](err);
             };
 
+            /*
+             * There is a bug with setTimeout. If CPU is overloaded
+             * setTimeout will be possibly triggered earlier.
+             */
+            let startTime = Date.now();
+            let authenticationTimeout = setTimeout(() => {
+                cleanup('Timeout: ' + (Date.now() - startTime))
+            }, timeout);
+
             let success = () => {
-                this.status = "chat";
+                this.emitEvent(this.EVENTS.MPOTR_START);
+                this.removeSubscriberByTag(this.MSG.MPOTR_AUTH, startTime);
+                clearTimeout(authenticationTimeout);
                 cb["success"]();
             };
 
@@ -1067,7 +1075,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
              * Can be rejected by timeout or protocol error.
              * @type {Promise}
              */
-            let auth = new Promise(function (success, error) {
+            let authenticationPhase = new Promise(function (success, error) {
                 cb["success"] = success;
                 cb["error"] = error;
             });
@@ -1130,8 +1138,8 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                             this.status = "Round " + this.rounds[currentRound].number;
 
                             // Process the whole queue
-                            for (let msg in roundsQueue[currentRound]) {
-                                if (!processMessage.apply(msg)) {
+                            for (let msg of roundsQueue[currentRound]) {
+                                if (!processMessage.apply(this, msg)) {
                                     return false;
                                 }
                             }
@@ -1153,17 +1161,15 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                         success();
                     }
                 } else if (payload[1] === currentRound + 1 && payload[1] < 5) {
-                    roundsQueue[payload[1]].push([conn, data]);
+                    roundsQueue[payload[1]].push([conn, payload.slice(2)]);
                 } else {
                     cleanup("Wrong round number");
                 }
-            });
-
-            setTimeout(cleanup, timeout);
+            }, Infinity, startTime);
 
             this.rounds[currentRound].send();
 
-            return auth;
+            return authenticationPhase;
         }
     }
 

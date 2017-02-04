@@ -28,11 +28,12 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
             this.writeToChat = writeFunc;
             this.on = callbacks;
 
-            this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'})
-                .on('open', this.on["open"])
-                .on('connection', function (conn) {
-                    client.addPeer(conn);
-                });
+            this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'});
+            this.peer.on('connection', function (conn) {
+                client.addPeer(conn);
+            });
+
+            this.peer.on('open', this.on["open"]);
 
             this.context = new mpOTRContext(this);
             let context = this.context;
@@ -87,6 +88,10 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                     }
                 });
             }
+
+            context.subscribeOnEvent(context.EVENTS.MPOTR_START, () => {
+                context.status = "chat";
+            });
 
             context.subscribeOnEvent(context.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
                 client.blockChat = false;
