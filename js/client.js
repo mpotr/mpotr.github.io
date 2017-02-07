@@ -6,7 +6,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
      * @property {Array} connPool Connections' pool
      * @property {string} nickname Nickname used in chat
      */
-    var client = {
+    let client = {
         peer: undefined,
         connPool: [],
         nickname: "",
@@ -74,7 +74,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
             if (!this.connPool.remove) {
                 Object.defineProperty(this.connPool, "remove", {
                     value: function(elem) {
-                        var idx = this.peers.indexOf(elem.peer);
+                        let idx = this.peers.indexOf(elem.peer);
 
                         if (idx > -1) {
                             this.splice(idx, 1);
@@ -156,18 +156,18 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
         },
 
         /**
-         * Disconnects peer safely
+         * Disconnects peer
          */
         chatDisconnect: function () {
-            if (!this.peer.disconnected || !this.peer.destroyed) {
-                if (this.context.status === "chat") {
-                    this.context.stopChat();
-                }
-                
-                // TODO: Think about validation
-                setTimeout(() => {
-                    this.peer.destroy();
-                }, 2000);
+          /**
+           * Actually there is no strict necessity to
+           * publish ephemeral keys in case of tab closing.
+           * So it is better to destroy connection rather than
+           * try to end chat gracefully (which is impossible)
+           * TODO: clean ALL variables containing session key (use debugger, Luke)
+           */
+          if (!this.peer.disconnected || !this.peer.destroyed) {
+              this.peer.destroy();
             }
         },
 
@@ -176,7 +176,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
          * @param {DataConnection|string} anotherPeer New peer or established connection
          */
         addPeer: function (anotherPeer) {
-            var success = (function(self) {
+            let success = (function(self) {
                 return function(conn) {
                     conn.on('data', handleMessage)
                         .on('close', function() {
@@ -232,7 +232,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
          * @param {String} type Type of message (e.g. unencrypted, mpOTR, etc.)
          */
         sendMessage: function (message, type) {
-            var data = {
+            let data = {
                 "type": type,
                 "data": message
             };
@@ -270,7 +270,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
          * a leader of communication
          */
         amILeader: function() {
-            var leaderFromConnPool = this.connPool.reduce(function(conn1, conn2){
+            let leaderFromConnPool = this.connPool.reduce(function(conn1, conn2){
                 if (conn1.peer > conn2.peer) {
                     return conn1;
                 } else {

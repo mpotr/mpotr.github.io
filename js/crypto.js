@@ -1,48 +1,48 @@
 define(['jquery', 'debug', 'cryptico'], function($, debug) {
     "use strict";
 
-    var len_sid_random = 13;
-    var key_length = "1024";
-    var auth_key_length = "1024";
-    var exp = "03";
-    var qmod = new BigInteger("1205156213460516294276038011098783037428475274251229971327058470979054415841306114445046929130670807336613570738952006098251824478525291315971365353402504611531367372670536703348123007294680829887020513584624726600189364717085162921889329599071881596888429934762044470097788673059921772650773521873603874984881875042154463169647779984441228936206496905064565147296499973963182632029642323604865192473605840717232357219244260470063729922144429668263448160459816959", 10);
-    var pmod = new BigInteger("2410312426921032588552076022197566074856950548502459942654116941958108831682612228890093858261341614673227141477904012196503648957050582631942730706805009223062734745341073406696246014589361659774041027169249453200378729434170325843778659198143763193776859869524088940195577346119843545301547043747207749969763750084308926339295559968882457872412993810129130294592999947926365264059284647209730384947211681434464714438488520940127459844288859336526896320919633919", 10);
-    var random = new SecureRandom();
+    let len_sid_random = 13;
+    let key_length = "1024";
+    let auth_key_length = "1024";
+    let exp = "03";
+    let qmod = new BigInteger("1205156213460516294276038011098783037428475274251229971327058470979054415841306114445046929130670807336613570738952006098251824478525291315971365353402504611531367372670536703348123007294680829887020513584624726600189364717085162921889329599071881596888429934762044470097788673059921772650773521873603874984881875042154463169647779984441228936206496905064565147296499973963182632029642323604865192473605840717232357219244260470063729922144429668263448160459816959", 10);
+    let pmod = new BigInteger("2410312426921032588552076022197566074856950548502459942654116941958108831682612228890093858261341614673227141477904012196503648957050582631942730706805009223062734745341073406696246014589361659774041027169249453200378729434170325843778659198143763193776859869524088940195577346119843545301547043747207749969763750084308926339295559968882457872412993810129130294592999947926365264059284647209730384947211681434464714438488520940127459844288859336526896320919633919", 10);
+    let random = new SecureRandom();
 
     /**
      * Generates RSA key pair
      * @param {string} length Key length
      * @returns {Array} [PrivateKey, PublicKey]
      */
-    var generatePair = function (length) {
-        var rsaPrivateKey = new RSAKey();
+    function generatePair(length) {
+        let rsaPrivateKey = new RSAKey();
         rsaPrivateKey.generate(length, exp);
-        var rsaPubKey = cryptico.publicKeyString(rsaPrivateKey);
+        let rsaPubKey = cryptico.publicKeyString(rsaPrivateKey);
         return [rsaPrivateKey, rsaPubKey];
-    };
+    }
 
     /**
      * Generates big random number
      * @returns {BigInteger}
      */
-    var generateNumber = function () {
-        var randBytes = new Array(len_sid_random);
+    function generateNumber() {
+        let randBytes = new Array(len_sid_random);
         random.nextBytes(randBytes);
         return new BigInteger(randBytes);
-    };
+    }
 
     /**
      * TODO
      * @param {string} length
      * @returns {Array}
      */
-    var generateExpPair = function (length) {
-        var randBigNumber = generateNumber();
+    function generateExpPair(length) {
+        let randBigNumber = generateNumber();
         randBigNumber = randBigNumber.mod(qmod);
-        var ex = new BigInteger(exp, 10);
-        var b = ex.modPow(randBigNumber, pmod);
+        let ex = new BigInteger(exp, 10);
+        let b = ex.modPow(randBigNumber, pmod);
         return [randBigNumber, b];
-    };
+    }
 
     /**
      * Round class.
@@ -54,7 +54,8 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
     }
 
     /**
-     * Indicates if round data was sended
+     * Indicates if round data was sended.
+     * Is used for debug purposes.
      * @type Boolean
      */
     Round.prototype.sended = false;
@@ -76,7 +77,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
     /**
      * Simple wrapper for unified processing of
-     * yet another authentication round result.
+     * authentication round result.
      * @param {Object} result object with results of auth round.
      * Must contain key "status". "OK" is value for success.
      * Other ones are treated as error messages.
@@ -215,7 +216,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
     round2._recv = function (peer, msg) {
         let context = this.context;
-        var result = {
+        let result = {
             "update": {},
             "status": "OK"
         };
@@ -488,12 +489,12 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          * a lost message in response
          */
         this.deliveryRequest = function () {
-            var data = {
+            let data = {
                 "type": this.MSG.MPOTR_LOST_MSG,
                 "sid": this.sid
             };
 
-            for (var id of this.client.lostMsg) {
+            for (let id of this.client.lostMsg) {
                 data["lostMsgID"] = id;
                 this.signMessage(data);
 
@@ -510,7 +511,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          */
         this.deliveryResponse = function (data) {
             // Searching in undelivered messages
-            var idx = this.client.undelivered.map(function (elem) {
+            let idx = this.client.undelivered.map(function (elem) {
                 return elem["messageID"];
             }).indexOf(data["lostMsgID"]);
             if (idx !== -1) {
@@ -531,12 +532,12 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
         this.sendMessage = function (text) {
             // TODO: think about keylength 64
-            var encryptedText = cryptico.encryptAESCBC(
+            let encryptedText = cryptico.encryptAESCBC(
                 text,
                 this.sessionKey.slice(0, 32)
             );
 
-            var data = {};
+            let data = {};
             data["type"] = this.MSG.MPOTR_CHAT;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
@@ -568,14 +569,14 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 return;
             }
 
-            var index = this.client.lostMsg.indexOf(data["messageID"]);
+            let index = this.client.lostMsg.indexOf(data["messageID"]);
 
             if (index > -1) {
                 this.client.lostMsg.splice(index, 1);
             }
 
             // Lost message delivery request
-            for (var id of data["parentsIDs"]) {
+            for (let id of data["parentsIDs"]) {
                 if (this.client.delivered.filter((elem) => {
                         return elem["messageID"] === id;
                     }).length === 0 && this.client.undelivered.filter((elem) => {
@@ -591,15 +592,15 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
             // Looking in undelivered buffer for messages that can be delivered
             // Means all its parents was delivered
-            for (var i = this.client.undelivered.length - 1; i >= 0; --i) {
-                var candidateToDelivery = this.client.undelivered[i];
-                var canBeDelivered = true;
+            for (let i = this.client.undelivered.length - 1; i >= 0; --i) {
+                let candidateToDelivery = this.client.undelivered[i];
+                let canBeDelivered = true;
 
                 // Looking for parents of current message in delivered messages
-                for (var parent of candidateToDelivery["parentsIDs"]) {
-                    var parentWasDelivered = false;
+                for (let parent of candidateToDelivery["parentsIDs"]) {
+                    let parentWasDelivered = false;
 
-                    for (var deliveredMsg of this.client.delivered) {
+                    for (let deliveredMsg of this.client.delivered) {
                         if (deliveredMsg["messageID"] === parent) {
                             parentWasDelivered = true;
                             break;
@@ -614,8 +615,8 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
                 if (canBeDelivered) {
                     // Removing parents from frontier
-                    for (var parent of candidateToDelivery["parentsIDs"]) {
-                        var j = this.client.frontier.indexOf(parent);
+                    for (let parent of candidateToDelivery["parentsIDs"]) {
+                        let j = this.client.frontier.indexOf(parent);
 
                         if (j > -1) {
                             this.client.frontier.splice(j, 1);
@@ -627,8 +628,8 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                     this.client.delivered.unshift(candidateToDelivery);
                     this.client.undelivered.splice(i, 1);
 
-                    var msg = this.decryptMessage(candidateToDelivery["data"]);
-                    var author = candidateToDelivery["from"];
+                    let msg = this.decryptMessage(candidateToDelivery["data"]);
+                    let author = candidateToDelivery["from"];
                     this.client.writeToChat(author, msg);
                     debug.log("info", "got \"" + msg + "\" from " + author);
                 }
@@ -728,10 +729,10 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 delete data["sig"];
             }
 
-            var keys = Object.keys(data);
+            let keys = Object.keys(data);
             keys.sort();
 
-            var result = "";
+            let result = "";
             for (let key of keys) {
                 result += data[key];
             }
@@ -740,12 +741,12 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         };
 
         this.checkSig = function (data, peer) {
-            var pk = cryptico.publicKeyFromString(this.ephPubKeys[peer]);
-            var keys = Object.keys(data);
+            let pk = cryptico.publicKeyFromString(this.ephPubKeys[peer]);
+            let keys = Object.keys(data);
             keys.splice(keys.indexOf('sig'), 1);
             keys = keys.sort();
 
-            var result = "";
+            let result = "";
             for (let key of keys) {
                 result += data[key];
             }
@@ -755,13 +756,13 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
         this.sendShutdown = function () {
             // TODO: think about keylength 64
-            var secret = JSON.stringify(this.myEphPrivKey);
-            var encryptedText = cryptico.encryptAESCBC(
+            let secret = JSON.stringify(this.myEphPrivKey);
+            let encryptedText = cryptico.encryptAESCBC(
                 secret,
                 this.sessionKey.slice(0, 32)
             );
 
-            var data = {};
+            let data = {};
             data["type"] = this.MSG.MPOTR_SHUTRDOWN;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
@@ -784,14 +785,15 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
             debug.log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
 
+            // TODO: Holy fucking shit! +1? Really?
             this.shutdown_received += 1;
 
             return this.shutdown_received === this.client.connPool.length;
         };
 
         this.stopChat = function () {
-            var promises = [];
-            var resolves = {};
+            let promises = [];
+            let resolves = {};
 
             this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN_START);
             this.emitEvent(this.EVENTS.BLOCK_CHAT);
@@ -820,7 +822,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 this.sendShutdown();
             });
 
-            var data = {
+            let data = {
                 "type": this.MSG.CHAT_SYNC_REQ,
                 "sid": this.sid,
                 "connPool": this.client.connPool.peers.concat(this.client.peer.id)
@@ -1008,7 +1010,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 alert("Signature check fail");
             }
 
-            var response = this.deliveryResponse(data);
+            let response = this.deliveryResponse(data);
 
             if (response) {
                 conn.send(response);
@@ -1130,7 +1132,6 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                             }
 
                             currentRound += 1;
-                            // if (!rounds[currentRound].sended) {}
                             if (!this.rounds[currentRound].send()) {
                                 return false
                             }

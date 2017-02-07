@@ -28,10 +28,10 @@ require(['jquery', 'client'], function($, client) {
             return;
         }
         
-        var msgBox = $('#messageText');
-        var message = escape(msgBox.val());
+        let msgBox = $('#messageText');
+        let message = escape(msgBox.val());
 
-        var clearFlag = true;
+        let clearFlag = true;
         switch (client.context["status"]) {
             case "not started":
                 client.sendMessage(message, "unencrypted");
@@ -60,8 +60,8 @@ require(['jquery', 'client'], function($, client) {
     });
 
     $('#addPeer').on('click', function() {
-        var newPeer = $('#newPeer');
-        var pID = newPeer.val();
+        let newPeer = $('#newPeer');
+        let pID = newPeer.val();
 
         if (pID !== "") {
             client.addPeer(pID);
@@ -86,9 +86,9 @@ require(['jquery', 'client'], function($, client) {
      */
     function writeToChat(author, message) {
         // TODO: Add this function to client
-        var msg = document.createElement('code');
+        let msg = document.createElement('code');
         msg.innerText = author + ': ' + unescape(message) + '\n';
-        var $chat = $('#chat');
+        let $chat = $('#chat');
         $chat.append(msg);
         // Autoscroll
         $chat.scrollTop($chat[0].scrollHeight);
@@ -98,8 +98,8 @@ require(['jquery', 'client'], function($, client) {
         $("#CLTableBody > tr").remove();
         localStorage[client.peer.id] = JSON.stringify(client.friends);
 
-        for (var i = 0; i < client.friends.length; ++i) {
-            var friend = client.friends[i];
+        for (let i = 0; i < client.friends.length; ++i) {
+            let friend = client.friends[i];
 
             $("#CLTableBody").append(
                 "<tr>" +
@@ -110,14 +110,16 @@ require(['jquery', 'client'], function($, client) {
                 "   </td>" +
                 "</tr>");
 
-            for (var j = 0; j < client.connPool.length; ++j) {
+            let $friend = $("[id='" + friend + "']");
+
+            for (let j = 0; j < client.connPool.length; ++j) {
                 if (client.connPool[j].peer === friend) {
-                    $("#" + friend).prop("className", "btn-success btn-block");
+                  $friend.prop("className", "btn-success btn-block");
                     break;
                 }
             }
 
-            $("#" + friend).on("click", (function(friend) {
+            $friend.on("click", (function(friend) {
                 return function () {
                     this.disabled = true;
                     client.addPeer(friend);
@@ -131,8 +133,8 @@ require(['jquery', 'client'], function($, client) {
 
 
     $("#init").on("click", function () {
-        var peerID = $("#nickname").val();
-        var $mpOTR = $("#mpOTR");
+        let peerID = $("#nickname").val();
+        let $mpOTR = $("#mpOTR");
 
         client.init(
             peerID,
