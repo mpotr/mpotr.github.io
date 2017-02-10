@@ -420,8 +420,66 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
      * @returns {mpOTRContext}
      */
     function mpOTRContext(client) {
+
+        /**
+         * Possible events in application.
+         */
+        this.EVENTS = {
+            MPOTR_INIT: '[Event] mpOTR init',
+            MPOTR_START: '[Event] mpOTR start',
+            MPOTR_SHUTDOWN_START: '[Event] mpOTR shutdown start',
+            MPOTR_SHUTDOWN_FINISH: '[Event] mpOTR shutdown finish',
+            BLOCK_CHAT: '[Event] Block chat',
+            CHAT_SYNCED: '[Event] Chat has been synced',
+            CONN_POOL_ADD: "[Event] ConnPool: connection has been added",
+            CONN_POOL_REMOVE: "[Event] ConnPool: connection has been removed",
+            INCOMING_MSG: "[Event] Incoming Message"
+        };
+
+        /**
+         * Possible message types. Also used as event types for corresponding handlers.
+         */
+        this.MSG = {
+            UNENCRYPTED: "[Message] Unencrypted",
+            CONN_POOL_SYNC: "[Message] connPool Sync",
+            MPOTR_INIT: "[Message] mpOTR Init",
+            MPOTR_AUTH: "[Message] mpOTR Auth",
+            MPOTR_CHAT: "[Message] mpOTR Chat",
+            MPOTR_LOST_MSG: "[Message] mpOTR Lost Message Request",
+            MPOTR_SHUTRDOWN: "[Message] mpOTR Shutdown",
+            CHAT_SYNC_REQ: "[Message] ChatSyncReq",
+            CHAT_SYNC_RES: "[Message] ChatSyncRes"
+        };
+
+        /**
+         * Client's status
+         */
+        this.STATUS = {
+            UNENCRYPTED:    "[Status] Unencrypted",
+            ROUND1:         "[Status] Round #1",
+            ROUND2:         "[Status] Round #2",
+            ROUND3:         "[Status] Round #3",
+            ROUND4:         "[Status] Round #4",
+            MPOTR:          "[Status] mpOTR"
+        };
+
+        // Making search in MSG easy
+        Object.defineProperty(this.MSG, "_values", {
+            value: []
+        });
+
+        for (let val in this.MSG) {
+            this.MSG._values.push(this.MSG[val]);
+        }
+
+        Object.defineProperty(this.MSG, "hasMsgType", {
+            value: (msg) => {
+                return this.MSG._values.indexOf(msg) > -1;
+            }
+        });
+
         this.client = client;
-        this["status"] = "not started";
+        this["status"] = this.STATUS.UNENCRYPTED;
 
         this.rounds = {
             1: round1,
@@ -451,7 +509,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          * Resets all crypto-properties and rounds
          */
         this.reset = function () {
-            this["status"] = "not started";
+            this["status"] = this.STATUS.UNENCRYPTED;
             this.shutdown_received = 0;
             this.shutdown_sended = false;
             this.myLongPubKey = undefined;
@@ -645,81 +703,6 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             return cryptico.decryptAESCBC(text, this.sessionKey.slice(0, 32));
         };
 
-        // this.receive = function (author, msg) {
-        //     switch (msg[0]) {
-        //         case "init":
-        //             process(this, function (context) {
-        //                 return context.rounds[0].send(context);
-        //             });
-        //             debug.log("info", "init received");
-        //             this.emitEvent(this.EVENTS.MPOTR_INIT);
-        //             this["status"] = "auth";
-        //             break;
-        //         case "auth":
-        //             var roundNum = parseInt(msg[1], 10);
-        //             if ((this["round"] != roundNum) && !((roundNum == (this["round"] + 1)) && (this.rounds[this["round"]].ready))) {
-        //                 debug.log("alert", "somebody tries to break chat");
-        //                 break;
-        //             }
-        //             var round_now = this.rounds[roundNum];
-        //             if (!round_now.sended) {
-        //                 process(this, function (context) {
-        //                     return round_now.send(context);
-        //                 });
-        //             }
-        //
-        //             process(this, function (context) {
-        //                 return round_now.receive(author, msg.slice(2), context);
-        //             });
-        //
-        //             if (this.client.connPool.length === round_now.received) {
-        //                 var message = ["ready", String(this.rounds[roundNum]["name"])];
-        //                 this.rounds[this.round].ready = true;
-        //                 this.client.sendMessage(message, this.MSG.MPOTR_AUTH)
-        //             }
-        //
-        //             debug.log("info", this.status);
-        //             break;
-        //         case "ready":
-        //             roundNum = parseInt(msg[1], 10);
-        //             if (((this["round"] + 1) == roundNum) && this.rounds[this["round"]].ready) {
-        //                 break;
-        //             }
-        //             if (this["round"] != roundNum) {
-        //                 debug.log("alert", "somebody tries to break chat");
-        //                 break;
-        //             }
-        //             this.rounds[roundNum]["ready_dict"][author] = true;
-        //             var allNodesReady = true;
-        //             this.client.connPool.peers.forEach(function(peer) {
-        //                 allNodesReady = allNodesReady && this.rounds[roundNum]["ready_dict"][peer];
-        //             }, this);
-        //             if (allNodesReady !== true) {
-        //                 break;
-        //             }
-        //             if (roundNum < 3) {
-        //                 this["round"] = this["round"] + 1;
-        //                 process(this, function (context) {
-        //                     return context.rounds[roundNum + 1].send(context);
-        //                 });
-        //             } else {
-        //                 this["round"] = undefined;
-        //                 this["status"] = "chat";
-        //                 debug.log("info", "chat");
-        //                 this.emitEvent(this.EVENTS.MPOTR_START);
-        //             }
-        //             break;
-        //         case "error":
-        //             //TODO: something more adequate
-        //             debug.log("alert", "mpOTR error: " + msg);
-        //             break;
-        //         default:
-        //             //TODO: something more adequate
-        //             debug.log("alert", "Unexpected mpOTR type, message: " + msg);
-        //             break;
-        //     }
-        // };
-
         /**
          * Takes object, signs it and adds property 'sig'
          * @param {object} data Object to sign
@@ -775,7 +758,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         };
 
         this.receiveShutdown = function (msg) {
-            if (this["status"] == "not started") {
+            if (this["status"] === this.STATUS.UNENCRYPTED) {
                 return false;
             }
 
@@ -836,51 +819,6 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 this.deliveryRequest();
             }
         };
-
-        /**
-         * Possible events in application.
-         */
-        this.EVENTS = {
-            MPOTR_INIT: '[Event] mpOTR init',
-            MPOTR_START: '[Event] mpOTR start',
-            MPOTR_SHUTDOWN_START: '[Event] mpOTR shutdown start',
-            MPOTR_SHUTDOWN_FINISH: '[Event] mpOTR shutdown finish',
-            BLOCK_CHAT: '[Event] Block chat',
-            CHAT_SYNCED: '[Event] Chat has been synced',
-            CONN_POOL_ADD: "[Event] ConnPool: connection has been added",
-            CONN_POOL_REMOVE: "[Event] ConnPool: connection has been removed",
-            INCOMING_MSG: "[Event] Incoming Message"
-        };
-
-        /**
-         * Possible message types. Also used as event types for corresponding handlers.
-         */
-        this.MSG = {
-            UNENCRYPTED: "[Message] Unencrypted",
-            CONN_POOL_SYNC: "[Message] connPool Sync",
-            MPOTR_INIT: "[Message] mpOTR Init",
-            MPOTR_AUTH: "[Message] mpOTR Auth",
-            MPOTR_CHAT: "[Message] mpOTR Chat",
-            MPOTR_LOST_MSG: "[Message] mpOTR Lost Message Request",
-            MPOTR_SHUTRDOWN: "[Message] mpOTR Shutdown",
-            CHAT_SYNC_REQ: "[Message] ChatSyncReq",
-            CHAT_SYNC_RES: "[Message] ChatSyncRes"
-        };
-
-        // Making search in MSG easy
-        Object.defineProperty(this.MSG, "_values", {
-            value: []
-        });
-
-        for (let val in this.MSG) {
-            this.MSG._values.push(this.MSG[val]);
-        }
-
-        Object.defineProperty(this.MSG, "hasMsgType", {
-            value: (msg) => {
-                return this.MSG._values.indexOf(msg) > -1;
-            }
-        });
 
         /**
          * Events handlers for subscribe / emit system
@@ -981,7 +919,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
 
         // Init received! Checking current chat status and starting new one!
         this.subscribeOnEvent(this.MSG.MPOTR_INIT, (conn, data) => {
-            if (this.status === "not started") {
+            if (this.status === this.STATUS.UNENCRYPTED) {
                 this.emitEvent(this.EVENTS.MPOTR_INIT, [conn, data]);
             }
         });
@@ -1136,7 +1074,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                                 return false
                             }
 
-                            this.status = "Round " + this.rounds[currentRound].number;
+                            this.status = this.STATUS["Round" + this.rounds[currentRound].number];
 
                             // Process the whole queue
                             for (let msg of roundsQueue[currentRound]) {

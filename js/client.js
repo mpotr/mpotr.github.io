@@ -15,7 +15,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
         delivered: [],
         undelivered: [],
         friends: [],
-        on: {},
+        cb: {},
         blockChat: false,
 
         /**
@@ -26,14 +26,14 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
          */
         init: function (peerID, writeFunc, callbacks) {
             this.writeToChat = writeFunc;
-            this.on = callbacks;
+            this.cb = callbacks;
 
             this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'});
             this.peer.on('connection', function (conn) {
                 client.addPeer(conn);
             });
 
-            this.peer.on('open', this.on["open"]);
+            this.peer.on('open', this.cb["open"]);
 
             this.context = new mpOTRContext(this);
             let context = this.context;
@@ -90,7 +90,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
             }
 
             context.subscribeOnEvent(context.EVENTS.MPOTR_START, () => {
-                context.status = "chat";
+                context.status = context.STATUS.MPOTR;
             });
 
             context.subscribeOnEvent(context.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
@@ -180,14 +180,14 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                 return function(conn) {
                     conn.on('data', handleMessage)
                         .on('close', function() {
-                            handleDisconnect(this, self.on["close"]);
+                            handleDisconnect(this, self.cb["close"]);
                         });
 
                     self.connPool.add(conn);
                     self.addFriend(conn.peer);
 
-                    if (self.on["add"]) {
-                        self.on["add"]();
+                    if (self.cb["add"]) {
+                        self.cb["add"]();
                     }
                 }
             })(this);
@@ -239,7 +239,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
 
             this.broadcast(data);
 
-            if (type === "unencrypted") {
+            if (type === this.context.MSG.UNENCRYPTED) {
                 this.writeToChat(this.nickname, message);
             }
         },
@@ -323,7 +323,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
             callback();
         }
 
-        if (client.context.status === "chat") {
+        if (client.context.status === client.context.STATUS.MPOTR) {
             client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
 
             if (client.connPool.length === 0) {

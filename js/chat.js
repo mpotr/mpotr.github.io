@@ -15,11 +15,11 @@ require.config({
     }
 });
 
-require(['jquery', 'client'], function($, client) {
+require(['jquery', 'client', 'debug'], function($, client, debug) {
     "use strict";
 
     $('body').onbeforeunload = function() {
-        // TODO: Panic! Public keys!
+        // TODO: Panic! Public keys! Wait... Or not?
         client.chatDisconnect();
     };
 
@@ -30,19 +30,26 @@ require(['jquery', 'client'], function($, client) {
         
         let msgBox = $('#messageText');
         let message = escape(msgBox.val());
-
         let clearFlag = true;
+
         switch (client.context["status"]) {
-            case "not started":
-                client.sendMessage(message, "unencrypted");
+
+            case client.context.STATUS.UNENCRYPTED:
+                client.sendMessage(message, client.context.MSG.UNENCRYPTED);
                 break;
-            case "auth":
-                alert("wait a bit and resend it plz");
+
+            case client.context.STATUS.ROUND1:
+            case client.context.STATUS.ROUND2:
+            case client.context.STATUS.ROUND3:
+            case client.context.STATUS.ROUND4:
+                notify("Wait a bit. Now is ");
                 clearFlag = false;
                 break;
-            case "chat":
+
+            case client.context.STATUS.MPOTR:
                 client.context.sendMessage(message);
                 break;
+
             default:
                 alert("something is wrong, write an email to developers");
         }
@@ -94,6 +101,25 @@ require(['jquery', 'client'], function($, client) {
         $chat.scrollTop($chat[0].scrollHeight);
     }
 
+    let $userNotification = $('#userNotification');
+    $userNotification.click(() => {
+        $userNotification.slideUp()
+    });
+    $userNotification.hide();
+
+    /**
+     * User friendly notification
+     * @param message
+     */
+    function notify(message) {
+        debug.log('Notification: ' + message);
+        $userNotification.slideDown();
+        $userNotification.text(message);
+    }
+
+    /**
+     * Redraw contact list.
+     */
     function updateContactList() {
         $("#CLTableBody > tr").remove();
         localStorage[client.peer.id] = JSON.stringify(client.friends);
@@ -141,7 +167,7 @@ require(['jquery', 'client'], function($, client) {
             writeToChat,
             {
                 open: function (id) {
-                    $('#peerID').html("Your id is: " + id);
+                    $('#peerID').text("Your id is: " + id);
                     $('#sendMessage').prop("disabled", false);
                     $('#addPeer').prop("disabled", false);
                     $("#init").prop("disabled", true);
@@ -149,7 +175,8 @@ require(['jquery', 'client'], function($, client) {
                     client.nickname = id;
                 },
                 add: updateContactList,
-                close: updateContactList
+                close: updateContactList,
+                notify: notify
             });
 
         client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_INIT, function() {
