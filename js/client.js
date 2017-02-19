@@ -1,4 +1,4 @@
-define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
+define(['crypto', 'debug', 'strings', 'peerjs'], function(mpOTRContext, debug, $_) {
     "use strict";
 
     /**
@@ -64,7 +64,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                             this.push(newConn);
                             this.peers.push(newConn.peer);
                         }
-                        client.context.emitEvent(client.context.EVENTS.CONN_POOL_ADD, [newConn]);
+                        $_.ee.emitEvent($_.EVENTS.CONN_POOL_ADD, [newConn]);
 
                         return this;
                     }
@@ -79,7 +79,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                         if (idx > -1) {
                             this.splice(idx, 1);
                             this.peers.splice(idx, 1);
-                            client.context.emitEvent(client.context.EVENTS.CONN_POOL_REMOVE);
+                            $_.ee.emitEvent($_.EVENTS.CONN_POOL_REMOVE, [elem]);
 
                             return elem;
                         }
@@ -89,42 +89,51 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                 });
             }
 
-            context.subscribeOnEvent(context.EVENTS.MPOTR_START, () => {
-                context.status = context.STATUS.MPOTR;
+            $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
+                context.status = $_.STATUS.MPOTR;
             });
 
-            context.subscribeOnEvent(context.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
+            $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
                 client.blockChat = false;
             });
             
-            context.subscribeOnEvent(context.EVENTS.BLOCK_CHAT, () => {
+            $_.ee.addListener($_.EVENTS.BLOCK_CHAT, () => {
                 client.blockChat = true;
             });
 
-            context.subscribeOnEvent(context.EVENTS.CONN_POOL_ADD, (conn) => {
+            $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
                 conn.send({
-                    "type": context.MSG.CONN_POOL_SYNC,
+                    "type": $_.MSG.CONN_POOL_SYNC,
                     "data": this.connPool.peers
                 });
             });
 
-            // Subscribing of client message types
-            context.subscribeOnEvent(context.MSG.UNENCRYPTED, (conn, data) => {
-                client.writeToChat(conn.peer, data["data"]);
-            });
-
-            context.subscribeOnEvent(context.MSG.CONN_POOL_SYNC, (conn, data) => {
-                for (let peer of data["data"]) {
-                    client.addPeer(peer);
+            // Сlient message handlers
+            $_.ee.addListener($_.MSG.UNENCRYPTED, (conn, data) => {
+                if (context.status !== $_.STATUS.UNENCRYPTED) {
+                    debug.log('info', 'Got unencrypted message during non-unencrypted phase');
+                } else {
+                    client.writeToChat(conn.peer, data["data"]);
                 }
             });
 
-            context.subscribeOnEvent(context.MSG.CHAT_SYNC_REQ, (conn, data) => {
+            $_.ee.addListener($_.MSG.CONN_POOL_SYNC, (conn, data) => {
+                if (context.status !== $_.STATUS.UNENCRYPTED) {
+                    debug.log('info', 'Got connection pool synchronization during non-unencrypted phase');
+                } else {
+                    for (let peer of data["data"]) {
+                        client.addPeer(peer);
+                    }
+                }
+            });
+
+            $_.ee.addListener($_.MSG.CHAT_SYNC_REQ, (conn, data) => {
                 if (!context.checkSig(data, conn.peer)) {
-                    alert("Signature check fail");
+                    debug.log('alert', "Signature check fail");
+                    return;
                 }
 
-                context.emitEvent(context.EVENTS.BLOCK_CHAT);
+                $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
 
                 // Removing 'dead' connections
                 let toDel = client.connPool.filter((elem) => {
@@ -136,19 +145,19 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
                     client.connPool.remove(elem);
                 }
 
-                context.subscribeOnEvent(context.EVENTS.CHAT_SYNCED, () => {
+                $_.ee.addOnceListener($_.EVENTS.CHAT_SYNCED, () => {
                     // send message to the sync boy
                     let message = {
-                        "type": context.MSG.CHAT_SYNC_RES,
+                        "type": $_.MSG.CHAT_SYNC_RES,
                         "sid": context.sid
                     };
                     context.signMessage(message);
 
                     conn.send(message);
-                }, 1);
+                });
 
                 if (client.isChatSynced()) {
-                    context.emitEvent(context.EVENTS.CHAT_SYNCED);
+                    $_.ee.emitEvent($_.EVENTS.CHAT_SYNCED);
                 } else {
                     context.deliveryRequest();
                 }
@@ -239,7 +248,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
 
             this.broadcast(data);
 
-            if (type === this.context.MSG.UNENCRYPTED) {
+            if (type === $_.MSG.UNENCRYPTED) {
                 this.writeToChat(this.nickname, message);
             }
         },
@@ -262,7 +271,7 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
          * @param {string} message
          */
         writeToChat: function (author, message) {
-            debug.log(author + ": " + message);
+            debug.log('info', author + ": " + message);
         },
 
         /**
@@ -300,14 +309,8 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
         let context = client.context;
 
         // Message has come
-        context.emitEvent(context.EVENTS.INCOMING_MSG, [this, data]);
-
-        // Event for specific message types
-        if (context.MSG.hasMsgType(data["type"])) {
-            context.emitEvent(data["type"], [this, data]);
-        } else {
-            debug.log("alert", "Incorrect Message Type: " + data["type"]);
-        }
+        $_.ee.emitEvent($_.EVENTS.INCOMING_MSG, [this, data]);
+        $_.ee.emitEvent(data["type"], [this, data]);
     }
 
     /**
@@ -323,21 +326,21 @@ define(['crypto', 'debug', 'peerjs'], function(mpOTRContext, debug) {
             callback();
         }
 
-        if (client.context.status === client.context.STATUS.MPOTR) {
-            client.context.emitEvent(client.context.EVENTS.BLOCK_CHAT);
+        if (client.context.status === $_.STATUS.MPOTR) {
+            $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
 
             if (client.connPool.length === 0) {
-                client.context.emitEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH);
+                $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
                 debug.log("info", "mpOTRContext reset");
                 return;
             }
 
             if (client.amILeader()) {
-                client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
+                $_.ee.addOnceListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
                     setTimeout(() => {
                         client.context.start();
                     }, 0);
-                }, 1);
+                });
                 client.context.stopChat();
             }
         }

@@ -4,7 +4,8 @@ require.config({
         "bootstrap": "lib/bootstrap/bootstrap.min",
         "jquery": "lib/jquery/jquery.min",
         "peerjs": "lib/peerjs/peer",
-        "cryptico": "lib/cryptico/cryptico"
+        "cryptico": "lib/cryptico/cryptico",
+        "eventEmitter": "lib/eventemitter/EventEmitter"
     },
     shim: {
         "bootstrap": {
@@ -15,7 +16,7 @@ require.config({
     }
 });
 
-require(['jquery', 'client', 'debug'], function($, client, debug) {
+require(['jquery', 'client', 'debug', 'strings'], function($, client, debug, $_) {
     "use strict";
 
     $('body').onbeforeunload = function() {
@@ -34,24 +35,24 @@ require(['jquery', 'client', 'debug'], function($, client, debug) {
 
         switch (client.context["status"]) {
 
-            case client.context.STATUS.UNENCRYPTED:
-                client.sendMessage(message, client.context.MSG.UNENCRYPTED);
+            case $_.STATUS.UNENCRYPTED:
+                client.sendMessage(message, $_.MSG.UNENCRYPTED);
                 break;
 
-            case client.context.STATUS.ROUND1:
-            case client.context.STATUS.ROUND2:
-            case client.context.STATUS.ROUND3:
-            case client.context.STATUS.ROUND4:
+            case $_.STATUS.ROUND1:
+            case $_.STATUS.ROUND2:
+            case $_.STATUS.ROUND3:
+            case $_.STATUS.ROUND4:
                 notify("Wait a bit. Now is ");
                 clearFlag = false;
                 break;
 
-            case client.context.STATUS.MPOTR:
+            case $_.STATUS.MPOTR:
                 client.context.sendMessage(message);
                 break;
 
             default:
-                alert("something is wrong, write an email to developers");
+                debug.log('alert', "something is wrong, contact the developers");
         }
 
         if (clearFlag) {
@@ -112,7 +113,7 @@ require(['jquery', 'client', 'debug'], function($, client, debug) {
      * @param message
      */
     function notify(message) {
-        debug.log('Notification: ' + message);
+        debug.log('info', 'Notification: ' + message);
         $userNotification.slideDown();
         $userNotification.text(message);
     }
@@ -179,12 +180,24 @@ require(['jquery', 'client', 'debug'], function($, client, debug) {
                 notify: notify
             });
 
-        client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_INIT, function() {
+        $_.ee.addListener($_.EVENTS.MPOTR_INIT, () => {
             $mpOTR.text("stop mpOTR");
         });
 
-        client.context.subscribeOnEvent(client.context.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
+        $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
             $mpOTR.text("start mpOTR");
+        });
+
+        $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
+            notify("Chat started!");
+        });
+
+        $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
+            notify(conn.peer + " has been added");
+        });
+
+        $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
+            notify(conn.peer + " has gone offline");
         });
 
         if (localStorage[peerID]) {

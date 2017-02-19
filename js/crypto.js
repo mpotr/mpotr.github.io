@@ -1,4 +1,4 @@
-define(['jquery', 'debug', 'cryptico'], function($, debug) {
+define(['jquery', 'debug', 'strings', 'cryptico'], function($, debug, $_) {
     "use strict";
 
     let len_sid_random = 13;
@@ -153,7 +153,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         result["update"]["ephPubKeys"][context.client.peer.id] = pub_eph;
 
         let message = ["auth", this.number, String(my_k_hashed), String(pub_longterm), String(pub_eph)];
-        context.client.sendMessage(message, context.MSG.MPOTR_AUTH);
+        context.client.sendMessage(message, $_.MSG.MPOTR_AUTH);
         this.sended = true;
 
         return result;
@@ -208,7 +208,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         let message = ["auth", this.number, String(sid), String(exp_r_i)];
         result["update"]["expAuthNonce"] = {};
         result["update"]["expAuthNonce"][context.client.peer.id] = exp_r_i;
-        context.client.sendMessage(message, context.MSG.MPOTR_AUTH);
+        context.client.sendMessage(message, $_.MSG.MPOTR_AUTH);
         this.sended = true;
 
         return result;
@@ -289,7 +289,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         result.update["myBigT"] = bigT;
 
         let s = ["auth", this.number, String(xoredNonce), String(bigT)];
-        context.client.sendMessage(s, context.MSG.MPOTR_AUTH);
+        context.client.sendMessage(s, $_.MSG.MPOTR_AUTH);
         this.sended = true;
 
         return result;
@@ -378,7 +378,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         result.update["c_i"] = c_i_hashed;
 
         let s = ["auth", this.number, String(d_i), String(sig)];
-        context.client.sendMessage(s, context.MSG.MPOTR_AUTH);
+        context.client.sendMessage(s, $_.MSG.MPOTR_AUTH);
         this.sended = true;
 
         return result;
@@ -421,65 +421,8 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
      */
     function mpOTRContext(client) {
 
-        /**
-         * Possible events in application.
-         */
-        this.EVENTS = {
-            MPOTR_INIT: '[Event] mpOTR init',
-            MPOTR_START: '[Event] mpOTR start',
-            MPOTR_SHUTDOWN_START: '[Event] mpOTR shutdown start',
-            MPOTR_SHUTDOWN_FINISH: '[Event] mpOTR shutdown finish',
-            BLOCK_CHAT: '[Event] Block chat',
-            CHAT_SYNCED: '[Event] Chat has been synced',
-            CONN_POOL_ADD: "[Event] ConnPool: connection has been added",
-            CONN_POOL_REMOVE: "[Event] ConnPool: connection has been removed",
-            INCOMING_MSG: "[Event] Incoming Message"
-        };
-
-        /**
-         * Possible message types. Also used as event types for corresponding handlers.
-         */
-        this.MSG = {
-            UNENCRYPTED: "[Message] Unencrypted",
-            CONN_POOL_SYNC: "[Message] connPool Sync",
-            MPOTR_INIT: "[Message] mpOTR Init",
-            MPOTR_AUTH: "[Message] mpOTR Auth",
-            MPOTR_CHAT: "[Message] mpOTR Chat",
-            MPOTR_LOST_MSG: "[Message] mpOTR Lost Message Request",
-            MPOTR_SHUTRDOWN: "[Message] mpOTR Shutdown",
-            CHAT_SYNC_REQ: "[Message] ChatSyncReq",
-            CHAT_SYNC_RES: "[Message] ChatSyncRes"
-        };
-
-        /**
-         * Client's status
-         */
-        this.STATUS = {
-            UNENCRYPTED:    "[Status] Unencrypted",
-            ROUND1:         "[Status] Round #1",
-            ROUND2:         "[Status] Round #2",
-            ROUND3:         "[Status] Round #3",
-            ROUND4:         "[Status] Round #4",
-            MPOTR:          "[Status] mpOTR"
-        };
-
-        // Making search in MSG easy
-        Object.defineProperty(this.MSG, "_values", {
-            value: []
-        });
-
-        for (let val in this.MSG) {
-            this.MSG._values.push(this.MSG[val]);
-        }
-
-        Object.defineProperty(this.MSG, "hasMsgType", {
-            value: (msg) => {
-                return this.MSG._values.indexOf(msg) > -1;
-            }
-        });
-
         this.client = client;
-        this["status"] = this.STATUS.UNENCRYPTED;
+        this["status"] = $_.STATUS.UNENCRYPTED;
 
         this.rounds = {
             1: round1,
@@ -497,11 +440,11 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          */
         this.start = function() {
             if (this.client.connPool.length > 0) {
-                this.client.sendMessage(["init"], this.MSG.MPOTR_INIT);
-                this.emitEvent(this.EVENTS.MPOTR_INIT);
+                this.client.sendMessage(["init"], $_.MSG.MPOTR_INIT);
+                $_.ee.emitEvent($_.EVENTS.MPOTR_INIT);
             } else {
-                alert("No peers were added");
-                this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH);
+                debug.log('alert', "No peers were added");
+                $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
             }
         };
 
@@ -509,7 +452,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          * Resets all crypto-properties and rounds
          */
         this.reset = function () {
-            this["status"] = this.STATUS.UNENCRYPTED;
+            this["status"] = $_.STATUS.UNENCRYPTED;
             this.shutdown_received = 0;
             this.shutdown_sended = false;
             this.myLongPubKey = undefined;
@@ -548,7 +491,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
          */
         this.deliveryRequest = function () {
             let data = {
-                "type": this.MSG.MPOTR_LOST_MSG,
+                "type": $_.MSG.MPOTR_LOST_MSG,
                 "sid": this.sid
             };
 
@@ -596,7 +539,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             );
 
             let data = {};
-            data["type"] = this.MSG.MPOTR_CHAT;
+            data["type"] = $_.MSG.MPOTR_CHAT;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
@@ -695,7 +638,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             // oldBlue ends
 
             if (this.client.isChatSynced()) {
-                this.emitEvent(this.EVENTS.CHAT_SYNCED);
+                $_.ee.emitEvent($_.EVENTS.CHAT_SYNCED);
             }
         };
 
@@ -746,7 +689,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             );
 
             let data = {};
-            data["type"] = this.MSG.MPOTR_SHUTRDOWN;
+            data["type"] = $_.MSG.MPOTR_SHUTRDOWN;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
@@ -758,7 +701,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
         };
 
         this.receiveShutdown = function (msg) {
-            if (this["status"] === this.STATUS.UNENCRYPTED) {
+            if (this["status"] === $_.STATUS.UNENCRYPTED) {
                 return false;
             }
 
@@ -778,11 +721,11 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             let promises = [];
             let resolves = {};
 
-            this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN_START);
-            this.emitEvent(this.EVENTS.BLOCK_CHAT);
+            $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_START);
+            $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
 
             promises.push(new Promise((resolve) => {
-                this.subscribeOnEvent(this.EVENTS.CHAT_SYNCED, resolve, 1);
+                $_.ee.addOnceListener($_.EVENTS.CHAT_SYNCED, resolve);
             }));
 
             for (let peer of this.client.connPool.peers) {
@@ -791,22 +734,24 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
                 }))
             }
 
-            this.subscribeOnEvent(this.MSG.CHAT_SYNC_RES, (conn, data) => {
+            let chatSyncListener = (conn, data) => {
 
                 if (!this.checkSig(data, conn.peer)) {
-                    alert("Signature check fail");
+                    debug.log('alert', "Signature check fail");
                 }
 
                 resolves[conn.peer]();
-            });
+            };
+
+            $_.ee.addListener($_.MSG.CHAT_SYNC_RES, chatSyncListener);
 
             Promise.all(promises).then(() => {
-                this.clearEventListeners(this.MSG.CHAT_SYNC_RES);
+                $_.ee.removeListener($_.MSG.CHAT_SYNC_RES, chatSyncListener);
                 this.sendShutdown();
             });
 
             let data = {
-                "type": this.MSG.CHAT_SYNC_REQ,
+                "type": $_.MSG.CHAT_SYNC_REQ,
                 "sid": this.sid,
                 "connPool": this.client.connPool.peers.concat(this.client.peer.id)
             };
@@ -814,138 +759,46 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             this.client.broadcast(data);
 
             if (this.client.isChatSynced()) {
-                this.emitEvent(this.EVENTS.CHAT_SYNCED);
+                $_.ee.emitEvent($_.EVENTS.CHAT_SYNCED);
             } else {
                 this.deliveryRequest();
             }
         };
 
-        /**
-         * Events handlers for subscribe / emit system
-         */
-        this.on = {};
-
-        for (let key in this.EVENTS) {
-            this.on[this.EVENTS[key]] = [];
-        }
-
-        for (let key in this.MSG) {
-            this.on[this.MSG[key]] = [];
-        }
-
-        /**
-         * Adds event listener to the event
-         * @param {String} name name of event
-         * @param {function} callback event handler
-         * @param {number=} count how many time run?
-         * @param {String=} tag useful for logical grouping handlers with following massive removing
-         */
-        this.subscribeOnEvent = function(name, callback, count, tag) {
-            this.on[name].push({
-                tag: tag ? tag : "",
-                callback: callback,
-                count: count ? count : Infinity
-            });
-        };
-
-        /**
-         * Speaks for itself, doesn't it?
-         * @param {String} name name of event
-         * @param {Array=} args arguments for event handlers
-         */
-        this.emitEvent = function(name, args) {
-            let toDel = [];
-
-            this.on[name].forEach((elem) => {
-                elem.callback.apply(this, args);
-                --elem.count;
-
-                if (elem.count == 0) {
-                    toDel.push(elem);
-                }
-            });
-
-            toDel.forEach((elem) => {
-                let idx = this.on[name].indexOf(elem);
-                this.on[name].splice(idx, 1);
-            });
-        };
-
-        /**
-         * Removes subscriber of event specified
-         * @param {string} name name of event
-         * @param {function} subscriber subscriber
-         */
-        this.removeSubscriber = function(name, subscriber) {
-            let idx = this.on[name].indexOf(subscriber);
-
-            if (idx > -1) {
-                this.on[name].splice(idx, 1);
-            }
-        };
-
-        /**
-         * Removes subscriber of specified event by tag
-         * @param name
-         * @param tag
-         */
-        this.removeSubscriberByTag = function (name, tag) {
-            let toDel = [];
-
-            this.on[name].forEach((elem) => {
-                if (elem.tag === tag) {
-                    toDel.push(elem);
-                }
-            });
-
-            toDel.forEach((elem) => {
-                let idx = this.on[name].indexOf(elem);
-                this.on[name].splice(idx, 1);
-            });
-        };
-
-        /**
-         * Clears list of handlers for event specified
-         * @param {String} name name of event
-         */
-        this.clearEventListeners = function(name) {
-            this.on[name] = [];
-        };
-
         // Reset context on chat shutdown
-        this.subscribeOnEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
+        $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
             this.reset();
         });
 
         // Init received! Checking current chat status and starting new one!
-        this.subscribeOnEvent(this.MSG.MPOTR_INIT, (conn, data) => {
-            if (this.status === this.STATUS.UNENCRYPTED) {
-                this.emitEvent(this.EVENTS.MPOTR_INIT, [conn, data]);
+        $_.ee.addListener($_.MSG.MPOTR_INIT, (conn, data) => {
+            if (this.status === $_.STATUS.UNENCRYPTED) {
+                $_.ee.emitEvent($_.EVENTS.MPOTR_INIT, [conn, data]);
             }
         });
 
-        this.subscribeOnEvent(this.EVENTS.MPOTR_INIT, (conn, data) => {
-            // Creating new arbiter
-            let arbiter = this.AuthenticationPhase();
+        $_.ee.addListener($_.EVENTS.MPOTR_INIT, (conn, data) => {
+            // Initiating authentication phase
+            let authenticationPhase = this.InitAuthenticationPhase();
 
-            arbiter.then(() => {
+            authenticationPhase.then(() => {
                 debug.log('info', 'Success!');
             }).catch((err) => {
                 debug.log('alert', err);
             });
         });
 
-        this.subscribeOnEvent(this.MSG.MPOTR_CHAT, (conn, data) => {
+        $_.ee.addListener($_.MSG.MPOTR_CHAT, (conn, data) => {
             if (!this.checkSig(data, data["from"])) {
-                alert("Signature check fail");
+                debug.log('alert', "Signature check fail");
             }
 
             this.receiveMessage(data);
         });
 
-        this.subscribeOnEvent(this.MSG.MPOTR_LOST_MSG, (conn, data) => {
+        $_.ee.addListener($_.MSG.MPOTR_LOST_MSG, (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
-                alert("Signature check fail");
+                debug.log('alert', "Signature check fail");
             }
 
             let response = this.deliveryResponse(data);
@@ -955,18 +808,18 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             }
         });
 
-        this.subscribeOnEvent(this.MSG.MPOTR_SHUTRDOWN, (conn, data) => {
+        $_.ee.addListener($_.MSG.MPOTR_SHUTRDOWN, (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
-                alert("Signature check fail");
+                debug.log('alert', "Signature check fail");
             }
 
             if (this.receiveShutdown(data)) {
-                this.emitEvent(this.EVENTS.MPOTR_SHUTDOWN_FINISH);
+                $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
                 debug.log("info", "mpOTRContext reset");
             }
         });
 
-        this.AuthenticationPhase = function () {
+        this.InitAuthenticationPhase = function () {
             let currentRound = 1;
 
             /**
@@ -982,16 +835,78 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             // TODO: Move timeout to client or context
             let timeout = 10 * 1000;
 
+            let authMessageListener = (conn, data) => {
+                let payload = data["data"];
+                // Check Message
+                let processMessage = (conn, data) => {
+                    let result = this.rounds[currentRound].recv(conn.peer, data);
+
+                    if (result) {
+                        // TODO: check for double submit
+                        roundsRcvd[currentRound][conn.peer] = true;
+
+                        if (roundsRcvd.check(currentRound)) {
+                            if (currentRound == 4) {
+                                return true;
+                            }
+
+                            currentRound += 1;
+                            if (!this.rounds[currentRound].send()) {
+                                return false
+                            }
+
+                            this.status = $_.STATUS["Round" + this.rounds[currentRound].number];
+
+                            // Process the whole queue
+                            for (let msg of roundsQueue[currentRound]) {
+                                if (!processMessage.apply(this, msg)) {
+                                    return false;
+                                }
+                            }
+                        }
+                    } else {
+                        return false;
+                    }
+
+                    return true;
+                };
+
+                // TODO: data should be a dict!!!
+                if (payload[1] === currentRound) {
+                    if (!processMessage(conn, payload.slice(2))) {
+                        fail("processMessage failed");
+                        return;
+                    }
+
+                    if (currentRound == 4) {
+                        success();
+                    }
+                } else if (payload[1] === currentRound + 1 && payload[1] < 5) {
+                    roundsQueue[payload[1]].push([conn, payload.slice(2)]);
+                } else {
+                    fail("Wrong round number");
+                }
+            };
+
             /**
              * Dict with error/success callbacks
-             * @type {{success: Function, error: Function}}
+             * @type {{resolve: Function, reject: Function}}
              */
             let cb = {};
 
-            let cleanup = (err) => {
-                // TODO: remove event listener
-                this.clearEventListeners(this.MSG.MPOTR_AUTH);
-                cb["error"](err);
+            let cleanup = () => {
+                $_.ee.removeListener($_.MSG.MPOTR_AUTH, authMessageListener);
+                clearTimeout(authenticationTimeout);
+            };
+
+            /**
+             * Callback for unsuccessful authentication
+             * @param err Error description
+             */
+            let fail = (err) => {
+                cb["reject"](err);
+
+                cleanup();
             };
 
             /*
@@ -1000,14 +915,17 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
              */
             let startTime = Date.now();
             let authenticationTimeout = setTimeout(() => {
-                cleanup('Timeout: ' + (Date.now() - startTime))
+                fail('Timeout: ' + (Date.now() - startTime));
             }, timeout);
 
+            /**
+             * Callback for success authentication
+             */
             let success = () => {
-                this.emitEvent(this.EVENTS.MPOTR_START);
-                this.removeSubscriberByTag(this.MSG.MPOTR_AUTH, startTime);
-                clearTimeout(authenticationTimeout);
-                cb["success"]();
+                $_.ee.emitEvent($_.EVENTS.MPOTR_START);
+                cb["resolve"]();
+
+                cleanup();
             };
 
             /**
@@ -1015,9 +933,9 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
              * Can be rejected by timeout or protocol error.
              * @type {Promise}
              */
-            let authenticationPhase = new Promise(function (success, error) {
-                cb["success"] = success;
-                cb["error"] = error;
+            let authenticationPhase = new Promise((resolve, reject) => {
+                cb["resolve"] = resolve;
+                cb["reject"] = reject;
             });
 
             /**
@@ -1054,57 +972,7 @@ define(['jquery', 'debug', 'cryptico'], function($, debug) {
             }
 
             // Subscribing main listener for auth messages
-            this.subscribeOnEvent(this.MSG.MPOTR_AUTH, (conn, data) => {
-                let payload = data["data"];
-                // Check Message
-                let processMessage = (conn, data) => {
-                    let result = this.rounds[currentRound].recv(conn.peer, data);
-
-                    if (result) {
-                        // TODO: check for double submit
-                        roundsRcvd[currentRound][conn.peer] = true;
-
-                        if (roundsRcvd.check(currentRound)) {
-                            if (currentRound == 4) {
-                                return true;
-                            }
-
-                            currentRound += 1;
-                            if (!this.rounds[currentRound].send()) {
-                                return false
-                            }
-
-                            this.status = this.STATUS["Round" + this.rounds[currentRound].number];
-
-                            // Process the whole queue
-                            for (let msg of roundsQueue[currentRound]) {
-                                if (!processMessage.apply(this, msg)) {
-                                    return false;
-                                }
-                            }
-                        }
-                    } else {
-                        return false;
-                    }
-
-                    return true;
-                };
-
-                // TODO: data should be a dict!!!
-                if (payload[1] === currentRound) {
-                    if (!processMessage(conn, payload.slice(2))) {
-                        cleanup("processMessage failed");
-                    }
-
-                    if (currentRound == 4) {
-                        success();
-                    }
-                } else if (payload[1] === currentRound + 1 && payload[1] < 5) {
-                    roundsQueue[payload[1]].push([conn, payload.slice(2)]);
-                } else {
-                    cleanup("Wrong round number");
-                }
-            }, Infinity, startTime);
+            $_.ee.addListener($_.MSG.MPOTR_AUTH, authMessageListener);
 
             this.rounds[currentRound].send();
 
