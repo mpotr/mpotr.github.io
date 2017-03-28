@@ -1,4 +1,4 @@
-define(['jquery', 'debug', 'strings', 'cryptico'], function($, debug, $_) {
+define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
     "use strict";
 
     let len_sid_random = 13;

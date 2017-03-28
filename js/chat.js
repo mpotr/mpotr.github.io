@@ -16,7 +16,7 @@ require.config({
     }
 });
 
-require(['jquery', 'client', 'debug', 'strings'], function($, client, debug, $_) {
+require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) {
     "use strict";
 
     $('body').onbeforeunload = function() {

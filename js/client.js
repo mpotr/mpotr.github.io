@@ -1,4 +1,4 @@
-define(['crypto', 'debug', 'strings', 'peerjs'], function(mpOTRContext, debug, $_) {
+define(['crypto', 'debug', 'events', 'peerjs'], function(mpOTRContext, debug, $_) {
     "use strict";
 
     /**
