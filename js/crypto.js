@@ -738,6 +738,7 @@ define(['jquery', 'debug', 'strings', 'cryptico'], function($, debug, $_) {
 
                 if (!this.checkSig(data, conn.peer)) {
                     debug.log('alert', "Signature check fail");
+                    return;
                 }
 
                 resolves[conn.peer]();
@@ -791,6 +792,7 @@ define(['jquery', 'debug', 'strings', 'cryptico'], function($, debug, $_) {
         $_.ee.addListener($_.MSG.MPOTR_CHAT, (conn, data) => {
             if (!this.checkSig(data, data["from"])) {
                 debug.log('alert', "Signature check fail");
+                return;
             }
 
             this.receiveMessage(data);
@@ -799,6 +801,7 @@ define(['jquery', 'debug', 'strings', 'cryptico'], function($, debug, $_) {
         $_.ee.addListener($_.MSG.MPOTR_LOST_MSG, (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
                 debug.log('alert', "Signature check fail");
+                return;
             }
 
             let response = this.deliveryResponse(data);
@@ -811,6 +814,7 @@ define(['jquery', 'debug', 'strings', 'cryptico'], function($, debug, $_) {
         $_.ee.addListener($_.MSG.MPOTR_SHUTRDOWN, (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
                 debug.log('alert', "Signature check fail");
+                return;
             }
 
             if (this.receiveShutdown(data)) {
