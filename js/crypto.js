@@ -683,8 +683,8 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
         /**
          * A decorator to use with event callbacks. For example:
          *
-         * $_.ee.addListener("EventSpecificForTheFirstTwoRounds", checkStatus(
-         *   [ $_.ee.STATUS.ROUND1, $_.ee.STATUS.ROUND2 ],
+         * $_.ee.addListener("EventSpecificForTheAuthPhase", checkStatus(
+         *   [ $_.STATUS.AUTH ],
          *   callbackForTheEvent
          * )
          *
@@ -884,7 +884,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
                                 return false
                             }
 
-                            this.status = $_.STATUS["Round" + this.rounds[currentRound].number];
+                            this.status = $_.STATUS.AUTH;
 
                             // Process the whole queue
                             for (let msg of roundsQueue[currentRound]) {

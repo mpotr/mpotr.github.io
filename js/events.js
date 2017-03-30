@@ -38,11 +38,9 @@ define(['eventEmitter'], function (EventEmitter) {
          */
         STATUS: {
             UNENCRYPTED:    "STATUS.UNENCRYPTED",
-            ROUND1:         "STATUS.ROUND1",
-            ROUND2:         "STATUS.ROUND2",
-            ROUND3:         "STATUS.ROUND3",
-            ROUND4:         "STATUS.ROUND4",
-            MPOTR:          "STATUS.MPOTR"
+            AUTH:           "STATUS.AUTH",
+            MPOTR:          "STATUS.MPOTR",
+            SHUTDOWN:       "STATUS.SHUTDOWN"
         },
 
         ee: new EventEmitter()
