@@ -39,10 +39,7 @@ require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) 
                 client.sendMessage(message, $_.MSG.UNENCRYPTED);
                 break;
 
-            case $_.STATUS.ROUND1:
-            case $_.STATUS.ROUND2:
-            case $_.STATUS.ROUND3:
-            case $_.STATUS.ROUND4:
+            case $_.STATUS.AUTH:
                 notify("Wait a bit. Now is ");
                 clearFlag = false;
                 break;
