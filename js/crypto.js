@@ -680,6 +680,31 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
             return pk.verifyString(result, data["sig"]);
         };
 
+        /**
+         * A decorator to use with event callbacks. For example:
+         *
+         * $_.ee.addListener("EventSpecificForTheFirstTwoRounds", checkStatus(
+         *   [ $_.ee.STATUS.ROUND1, $_.ee.STATUS.ROUND2 ],
+         *   callbackForTheEvent
+         * )
+         *
+         * The callback will be triggered if and only if the current
+         * chat's status is among the supplied ones
+         *
+         * @param {String[]} statuses An array of permitted statuses
+         * @param {Function} func A function to decorate
+         * @returns {Function}
+         */
+        this.checkStatus = function (statuses, func) {
+            return function() {
+                if (statuses.indexOf(this.status) > -1) {
+                    func.apply(null, arguments);
+                } else {
+                    debug.log("info", "checkStatus failed")
+                }
+            }
+        };
+
         this.sendShutdown = function () {
             // TODO: think about keylength 64
             let secret = JSON.stringify(this.myEphPrivKey);
