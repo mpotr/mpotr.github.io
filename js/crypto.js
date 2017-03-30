@@ -850,7 +850,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
                         roundsRcvd[currentRound][conn.peer] = true;
 
                         if (roundsRcvd.check(currentRound)) {
-                            if (currentRound == 4) {
+                            if (currentRound === 4) {
                                 return true;
                             }
 
@@ -882,7 +882,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
                         return;
                     }
 
-                    if (currentRound == 4) {
+                    if (currentRound === 4) {
                         success();
                     }
                 } else if (payload[1] === currentRound + 1 && payload[1] < 5) {
