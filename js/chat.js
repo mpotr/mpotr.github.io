@@ -110,10 +110,10 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
      */
     function updateContactList() {
         $("#CLTableBody > tr").remove();
-        localStorage[client.peer.id] = JSON.stringify(client.friends);
+        localStorage[client.peer.id] = JSON.stringify(client.whitelist);
 
-        for (let i = 0; i < client.friends.length; ++i) {
-            let friend = client.friends[i];
+        for (let i = 0; i < client.whitelist.length; ++i) {
+            let friend = client.whitelist[i];
 
             $("#CLTableBody").append(
                 "<tr>" +
@@ -126,8 +126,8 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
 
             let $friend = $("[id='" + friend + "']");
 
-            for (let j = 0; j < client.connPool.length; ++j) {
-                if (client.connPool[j].peer === friend) {
+            for (let j = 0; j < client.connList.length; ++j) {
+                if (client.connList[j].peer === friend) {
                   $friend.prop("className", "btn-success btn-block");
                     break;
                 }
@@ -148,82 +148,84 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
 
     $("#init").on("click", function () {
         let peerID = $("#nickname").val();
-        let $mpOTR = $("#mpOTR");
 
         client.init(
             peerID,
-            writeToChat,
-            {
-                open: function (id) {
-                    $('#peerID').text("Your id is: " + id);
-                    $('#sendMessage').prop("disabled", false);
-                    $('#addPeer').prop("disabled", false);
-                    $("#init").prop("disabled", true);
-                    $("#nickname").prop("disabled", true);
-                    client.nickname = id;
-                },
-                add: updateContactList,
-                close: updateContactList,
-                notify: notify
-            });
-
-        $mpOTR.on("click", function() {
-            switch (client.context.status) {
-                case $_.STATUS.MPOTR:
-                    client.context.stopChat();
-                break;
-                case $_.STATUS.UNENCRYPTED:
-                    client.context.start();
-                break;
-                default:
-                    utils.log("info", "Somehow the button was clicked");
-            }
-        });
-
-
-        /**
-         * UI subscriptions:
-         * - Start / Stop button
-         * - Notifier
-         */
-        $_.ee.addListener($_.EVENTS.MPOTR_INIT, () => {
-            $mpOTR.text("Starting mpOTR...");
-            $mpOTR.disabled = true;
-        });
-
-        $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
-            $mpOTR.text("Stop mpOTR");
-            $mpOTR.disabled = false;
-        });
-
-        $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_START, () => {
-            $mpOTR.text("Stopping mpOTR...");
-            $mpOTR.disabled = true;
-        });
-
-        $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
-            $mpOTR.text("Start mpOTR");
-            $mpOTR.disabled = false;
-        });
-
-        $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
-            notify("Chat started!");
-        });
-
-        $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
-            notify(conn.peer + " has been added");
-        });
-
-        $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
-            notify(conn.peer + " has gone offline");
-        });
+            writeToChat
+        );
 
         if (localStorage[peerID]) {
-            client.friends = JSON.parse(localStorage[peerID]);
+            client.whitelist = JSON.parse(localStorage[peerID]);
         } else {
-            client.friends = [];
+            client.whitelist = [];
         }
 
         updateContactList();
+    });
+
+    let $mpOTR = $("#mpOTR");
+
+    $mpOTR.on("click", function() {
+        switch (client.context.status) {
+            case $_.STATUS.MPOTR:
+                client.context.stopChat();
+                break;
+            case $_.STATUS.UNENCRYPTED:
+                client.context.start();
+                break;
+            default:
+                utils.log("info", "Somehow the button was clicked");
+        }
+    });
+
+
+    /**
+     * UI subscriptions:
+     * - Start / Stop button
+     * - Notifier
+     */
+    $_.ee.addListener($_.EVENTS.PEER_OPENED, (id) => {
+        $('#peerID').text("Your id is: " + id);
+        $('#sendMessage').prop("disabled", false);
+        $('#addPeer').prop("disabled", false);
+        $("#init").prop("disabled", true);
+        $("#nickname").prop("disabled", true);
+        client.nickname = id;
+    });
+
+    $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, updateContactList);
+
+    $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, updateContactList);
+
+    $_.ee.addListener($_.EVENTS.MPOTR_INIT, () => {
+        $mpOTR.text("Starting mpOTR...");
+        $mpOTR.disabled = true;
+    });
+
+    $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
+        $mpOTR.text("Stop mpOTR");
+        $mpOTR.disabled = false;
+    });
+
+    $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_START, () => {
+        $mpOTR.text("Stopping mpOTR...");
+        $mpOTR.disabled = true;
+    });
+
+    $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
+        $mpOTR.text("Start mpOTR");
+        $mpOTR.disabled = false;
+    });
+
+    $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
+        notify("Chat started!");
+    });
+
+    $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
+        notify(conn.peer + " has been added");
+    });
+
+    $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
+        notify(conn.peer + " has gone offline");
     });
 });

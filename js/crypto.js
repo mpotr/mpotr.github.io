@@ -439,7 +439,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
          * Initiates mpOTR session
          */
         this.start = function() {
-            if (this.client.connPool.length > 0) {
+            if (this.client.connList.length > 0) {
                 this.client.sendMessage(["init"], $_.MSG.MPOTR_INIT);
                 $_.ee.emitEvent($_.EVENTS.MPOTR_INIT);
             } else {
@@ -739,7 +739,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             // TODO: Holy fucking shit! +1? Really?
             this.shutdown_received += 1;
 
-            return this.shutdown_received === this.client.connPool.length;
+            return this.shutdown_received === this.client.connList.length;
         };
 
         this.stopChat = function () {
@@ -753,7 +753,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 $_.ee.addOnceListener($_.EVENTS.CHAT_SYNCED, resolve);
             }));
 
-            for (let peer of this.client.connPool.peers) {
+            for (let peer of this.client.connList.peers) {
                 promises.push(new Promise((resolve) => {
                     resolves[peer] = resolve;
                 }))
@@ -779,7 +779,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             let data = {
                 "type": $_.MSG.CHAT_SYNC_REQ,
                 "sid": this.sid,
-                "connPool": this.client.connPool.peers.concat(this.client.peer.id)
+                "connList": this.client.connList.peers.concat(this.client.peer.id)
             };
             this.signMessage(data);
             this.client.broadcast(data);
@@ -994,7 +994,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             };
 
             // In the beginning none of messages are received
-            for (let client of this.client.connPool.peers) {
+            for (let client of this.client.connList.peers) {
                 for (let round in this.rounds) {
                     roundsRcvd[round][client] = false;
                 }

@@ -7,6 +7,7 @@ define(['eventEmitter'], function (EventEmitter) {
          * Possible events in application.
          */
         EVENTS: {
+            PEER_OPENED: 'EVENTS.PEER_OPENED',
             MPOTR_INIT: 'EVENTS.MPOTR_INIT',
             MPOTR_START: 'EVENTS.MPOTR_START',
             MPOTR_SHUTDOWN_START: 'EVENTS.MPOTR_SHUTDOWN_START',

@@ -2,50 +2,56 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
     "use strict";
 
     /**
+     * Represents a transport layer in protocol.
      * @property {Peer} peer Peer object
-     * @property {Array} connPool Connections' pool
-     * @property {string} nickname Nickname used in chat
+     * @property {DataConnection[]} connList An array of currently connected users
+     * @property {String} nickname A nickname used in chat
+     * @property {Messages[]} frontier OldBlue protocol internal struct
+     * @property {Messages[]} lostMsg OlbDlue protocol internal struct
+     * @property {Messages[]} delivered OldBlue protocol internal struct
+     * @property {Messages[]} undelivered OldBlue protocol internal struct
+     * @property {String[]} whitelist a list of hosts allowed to connect to
+     * @property {Boolean} blockChat a flag for blocking user messages
      */
     let client = {
         peer: undefined,
-        connPool: [],
+        connList: [],
         nickname: "",
         frontier: [],
         lostMsg: [],
         delivered: [],
         undelivered: [],
-        friends: [],
-        cb: {},
+        whitelist: [],
         blockChat: false,
 
         /**
          * Initialization of peer
          * @param {String} peerID Desirable peer id
          * @param {function} writeFunc overrides client's writeToChat
-         * @param {Object} callbacks callbacks on peer open, add, disconnect
          */
-        init: function (peerID, writeFunc, callbacks) {
+        init: function (peerID, writeFunc) {
             this.writeToChat = writeFunc;
-            this.cb = callbacks;
 
             this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'});
             this.peer.on('connection', function (conn) {
                 client.addPeer(conn);
             });
 
-            this.peer.on('open', this.cb["open"]);
+            this.peer.on('open', (id) => {
+                $_.ee.emitEvent($_.EVENTS.PEER_OPENED, [id]);
+            });
 
             this.context = new mpOTRContext(this);
             let context = this.context;
 
-            if (!this.connPool.peers) {
-                Object.defineProperty(this.connPool, "peers", {
+            if (!this.connList.peers) {
+                Object.defineProperty(this.connList, "peers", {
                     value: []
                 })
             }
 
-            if (!this.connPool.add) {
-                Object.defineProperty(this.connPool, "add", {
+            if (!this.connList.add) {
+                Object.defineProperty(this.connList, "add", {
                     value: function(newConn) {
                         let idx = this.peers.indexOf(newConn.peer);
 
@@ -71,8 +77,8 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 });
             }
 
-            if (!this.connPool.remove) {
-                Object.defineProperty(this.connPool, "remove", {
+            if (!this.connList.remove) {
+                Object.defineProperty(this.connList, "remove", {
                     value: function(elem) {
                         let idx = this.peers.indexOf(elem.peer);
 
@@ -104,7 +110,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
             $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
                 conn.send({
                     "type": $_.MSG.CONN_POOL_SYNC,
-                    "data": this.connPool.peers
+                    "data": this.connList.peers
                 });
             });
 
@@ -136,13 +142,13 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
 
                 // Removing 'dead' connections
-                let toDel = client.connPool.filter((elem) => {
-                    return data['connPool'].indexOf(elem.peer) === -1;
+                let toDel = client.connList.filter((elem) => {
+                    return data['connList'].indexOf(elem.peer) === -1;
                 });
 
                 for (let elem of toDel) {
                     elem.close();
-                    client.connPool.remove(elem);
+                    client.connList.remove(elem);
                 }
 
                 $_.ee.addOnceListener($_.EVENTS.CHAT_SYNCED, () => {
@@ -189,15 +195,11 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 return function(conn) {
                     conn.on('data', handleMessage)
                         .on('close', function() {
-                            handleDisconnect(this, self.cb["close"]);
+                            handleDisconnect(this);
                         });
 
-                    self.connPool.add(conn);
                     self.addFriend(conn.peer);
-
-                    if (self.cb["add"]) {
-                        self.cb["add"]();
-                    }
+                    self.connList.add(conn);
                 }
             })(this);
 
@@ -206,7 +208,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                     return;
                 }
 
-                for (let peer of this.connPool.peers) {
+                for (let peer of this.connList.peers) {
                     if (peer === anotherPeer) {
                         return;
                     }
@@ -229,14 +231,14 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
          * @param friend peer to add
          */
         addFriend: function (friend) {
-            if (this.friends.indexOf(friend) === -1) {
-                this.friends.push(friend);
+            if (this.whitelist.indexOf(friend) === -1) {
+                this.whitelist.push(friend);
             }
         },
 
         /**
          * Sends typed message to peers in
-         * connPool
+         * connList
          * @param {*} message Message can be any combination of native JS types
          * @param {String} type Type of message (e.g. unencrypted, mpOTR, etc.)
          */
@@ -254,12 +256,12 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
         },
 
         /**
-         * Sends JS object to all clients in connPool
+         * Sends JS object to all clients in connList
          * Used by other sending functions
          * @param {Object} data Object to send
          */
         broadcast: function (data) {
-            for (let conn of this.connPool) {
+            for (let conn of this.connList) {
                 conn.send(data);
             }
         },
@@ -279,7 +281,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
          * a leader of communication
          */
         amILeader: function() {
-            let leaderFromConnPool = this.connPool.reduce(function(conn1, conn2){
+            let leaderFromConnPool = this.connList.reduce(function(conn1, conn2){
                 if (conn1.peer > conn2.peer) {
                     return conn1;
                 } else {
@@ -301,14 +303,9 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
 
     /**
      * Function responsible for message handling:
-     * - prints message
-     * - sends acknowledgements
      * @param {Object} data message received
      */
     function handleMessage(data) {
-        let context = client.context;
-
-        // Message has come
         $_.ee.emitEvent($_.EVENTS.INCOMING_MSG, [this, data]);
         $_.ee.emitEvent(data["type"], [this, data]);
     }
@@ -319,17 +316,13 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
      * Removes connection from connection pool and
      * from peer.connections property
      */
-    function handleDisconnect(conn, callback) {
-        client.connPool.remove(conn);
-
-        if (callback) {
-            callback();
-        }
+    function handleDisconnect(conn) {
+        client.connList.remove(conn);
 
         if (client.context.status === $_.STATUS.MPOTR) {
             $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
 
-            if (client.connPool.length === 0) {
+            if (client.connList.length === 0) {
                 $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
                 utils.log("info", "mpOTRContext reset");
                 return;

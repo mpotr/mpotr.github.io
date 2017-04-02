@@ -17,7 +17,7 @@ define([], function () {
          * Adds all peers from friend-list
          */
         addAll: function() {
-            this.client.friends.forEach(conn => this.client.addPeer(conn));
+            this.client.whitelist.forEach(conn => this.client.addPeer(conn));
         },
 
         /**
