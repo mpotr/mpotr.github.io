@@ -707,7 +707,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
 
         this.sendShutdown = function () {
             // TODO: think about keylength 64
-            let secret = JSON.stringify(this.myEphPrivKey);
+            let secret = `p=${this.myEphPrivKey.p}, q=${this.myEphPrivKey.q}, e=${this.myEphPrivKey.e}`;
             let encryptedText = cryptico.encryptAESCBC(
                 secret,
                 this.sessionKey.slice(0, 32)
