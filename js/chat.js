@@ -74,16 +74,6 @@ require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) 
         }
     });
 
-    $("#mpOTR").on("click", function() {
-        if (this.innerText === "stop mpOTR") {
-            client.context.stopChat();
-            this.innerText = "start mpOTR";
-        } else {
-            this.innerText = "stop mpOTR";
-            client.context.start();
-        }
-    });
-
     /**
      * Writes authorized message to chat
      * @param {String} author
@@ -177,12 +167,43 @@ require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) 
                 notify: notify
             });
 
+        $mpOTR.on("click", function() {
+            switch (client.context.status) {
+                case $_.STATUS.MPOTR:
+                    client.context.stopChat();
+                break;
+                case $_.STATUS.UNENCRYPTED:
+                    client.context.start();
+                break;
+                default:
+                    debug.log("info", "Somehow the button was clicked");
+            }
+        });
+
+
+        /**
+         * UI subscriptions:
+         * - Start / Stop button
+         * - Notifier
+         */
         $_.ee.addListener($_.EVENTS.MPOTR_INIT, () => {
-            $mpOTR.text("stop mpOTR");
+            $mpOTR.text("Starting mpOTR...");
+            $mpOTR.disabled = true;
+        });
+
+        $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
+            $mpOTR.text("Stop mpOTR");
+            $mpOTR.disabled = false;
+        });
+
+        $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_START, () => {
+            $mpOTR.text("Stopping mpOTR...");
+            $mpOTR.disabled = true;
         });
 
         $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
-            $mpOTR.text("start mpOTR");
+            $mpOTR.text("Start mpOTR");
+            $mpOTR.disabled = false;
         });
 
         $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
@@ -199,7 +220,10 @@ require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) 
 
         if (localStorage[peerID]) {
             client.friends = JSON.parse(localStorage[peerID]);
-            updateContactList();
+        } else {
+            client.friends = [];
         }
+
+        updateContactList();
     });
 });
