@@ -1,7 +1,7 @@
 define(['eventEmitter'], function (EventEmitter) {
     "use strict";
 
-    // TODO: functions to check existance of string
+    // TODO: functions to check existence of string
     return {
         /**
          * Possible events in application.

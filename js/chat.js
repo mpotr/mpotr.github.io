@@ -16,7 +16,7 @@ require.config({
     }
 });
 
-require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) {
+require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) {
     "use strict";
 
     $('body').onbeforeunload = function() {
@@ -49,7 +49,7 @@ require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) 
                 break;
 
             default:
-                debug.log('alert', "something is wrong, contact the developers");
+                utils.log('alert', "something is wrong, contact the developers");
         }
 
         if (clearFlag) {
@@ -100,7 +100,7 @@ require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) 
      * @param message
      */
     function notify(message) {
-        debug.log('info', 'Notification: ' + message);
+        utils.log('info', 'Notification: ' + message);
         $userNotification.slideDown();
         $userNotification.text(message);
     }
@@ -176,7 +176,7 @@ require(['jquery', 'client', 'debug', 'events'], function($, client, debug, $_) 
                     client.context.start();
                 break;
                 default:
-                    debug.log("info", "Somehow the button was clicked");
+                    utils.log("info", "Somehow the button was clicked");
             }
         });
 

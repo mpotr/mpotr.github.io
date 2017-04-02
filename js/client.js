@@ -1,4 +1,4 @@
-define(['crypto', 'debug', 'events', 'peerjs'], function(mpOTRContext, debug, $_) {
+define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_) {
     "use strict";
 
     /**
@@ -111,7 +111,7 @@ define(['crypto', 'debug', 'events', 'peerjs'], function(mpOTRContext, debug, $_
             // Сlient message handlers
             $_.ee.addListener($_.MSG.UNENCRYPTED, (conn, data) => {
                 if (context.status !== $_.STATUS.UNENCRYPTED) {
-                    debug.log('info', 'Got unencrypted message during non-unencrypted phase');
+                    utils.log('info', 'Got unencrypted message during non-unencrypted phase');
                 } else {
                     client.writeToChat(conn.peer, data["data"]);
                 }
@@ -119,7 +119,7 @@ define(['crypto', 'debug', 'events', 'peerjs'], function(mpOTRContext, debug, $_
 
             $_.ee.addListener($_.MSG.CONN_POOL_SYNC, (conn, data) => {
                 if (context.status !== $_.STATUS.UNENCRYPTED) {
-                    debug.log('info', 'Got connection pool synchronization during non-unencrypted phase');
+                    utils.log('info', 'Got connection pool synchronization during non-unencrypted phase');
                 } else {
                     for (let peer of data["data"]) {
                         client.addPeer(peer);
@@ -129,7 +129,7 @@ define(['crypto', 'debug', 'events', 'peerjs'], function(mpOTRContext, debug, $_
 
             $_.ee.addListener($_.MSG.CHAT_SYNC_REQ, (conn, data) => {
                 if (!context.checkSig(data, conn.peer)) {
-                    debug.log('alert', "Signature check fail");
+                    utils.log('alert', "Signature check fail");
                     return;
                 }
 
@@ -271,7 +271,7 @@ define(['crypto', 'debug', 'events', 'peerjs'], function(mpOTRContext, debug, $_
          * @param {string} message
          */
         writeToChat: function (author, message) {
-            debug.log('info', author + ": " + message);
+            utils.log('info', author + ": " + message);
         },
 
         /**
@@ -331,7 +331,7 @@ define(['crypto', 'debug', 'events', 'peerjs'], function(mpOTRContext, debug, $_
 
             if (client.connPool.length === 0) {
                 $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
-                debug.log("info", "mpOTRContext reset");
+                utils.log("info", "mpOTRContext reset");
                 return;
             }
 

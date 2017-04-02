@@ -1,4 +1,4 @@
-define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
+define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
     "use strict";
 
     let len_sid_random = 13;
@@ -89,7 +89,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
 
             return true;
         } else {
-            debug.log("alert", "mpOTR error: " + result["status"]); // TODO something more adequate
+            utils.log("alert", "mpOTR error: " + result["status"]); // TODO something more adequate
 
             return false;
         }
@@ -443,7 +443,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
                 this.client.sendMessage(["init"], $_.MSG.MPOTR_INIT);
                 $_.ee.emitEvent($_.EVENTS.MPOTR_INIT);
             } else {
-                debug.log('alert', "No peers were added");
+                utils.log('alert', "No peers were added");
                 $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
             }
         };
@@ -632,7 +632,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
                     let msg = this.decryptMessage(candidateToDelivery["data"]);
                     let author = candidateToDelivery["from"];
                     this.client.writeToChat(author, msg);
-                    debug.log("info", "got \"" + msg + "\" from " + author);
+                    utils.log("info", "got \"" + msg + "\" from " + author);
                 }
             }
             // oldBlue ends
@@ -700,7 +700,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
                 if (statuses.indexOf(this.status) > -1) {
                     func.apply(null, arguments);
                 } else {
-                    debug.log("info", "checkStatus failed")
+                    utils.log("info", "checkStatus failed")
                 }
             }
         };
@@ -734,7 +734,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
                 this.sendShutdown();
             }
 
-            debug.log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
+            utils.log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
 
             // TODO: Holy fucking shit! +1? Really?
             this.shutdown_received += 1;
@@ -762,7 +762,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
             let chatSyncListener = (conn, data) => {
 
                 if (!this.checkSig(data, conn.peer)) {
-                    debug.log('alert', "Signature check fail");
+                    utils.log('alert', "Signature check fail");
                     return;
                 }
 
@@ -808,15 +808,15 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
             let authenticationPhase = this.InitAuthenticationPhase();
 
             authenticationPhase.then(() => {
-                debug.log('info', 'Success!');
+                utils.log('info', 'Success!');
             }).catch((err) => {
-                debug.log('alert', err);
+                utils.log('alert', err);
             });
         });
 
         $_.ee.addListener($_.MSG.MPOTR_CHAT, (conn, data) => {
             if (!this.checkSig(data, data["from"])) {
-                debug.log('alert', "Signature check fail");
+                utils.log('alert', "Signature check fail");
                 return;
             }
 
@@ -825,7 +825,7 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
 
         $_.ee.addListener($_.MSG.MPOTR_LOST_MSG, (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
-                debug.log('alert', "Signature check fail");
+                utils.log('alert', "Signature check fail");
                 return;
             }
 
@@ -838,13 +838,13 @@ define(['jquery', 'debug', 'events', 'cryptico'], function($, debug, $_) {
 
         $_.ee.addListener($_.MSG.MPOTR_SHUTRDOWN, (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
-                debug.log('alert', "Signature check fail");
+                utils.log('alert', "Signature check fail");
                 return;
             }
 
             if (this.receiveShutdown(data)) {
                 $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
-                debug.log("info", "mpOTRContext reset");
+                utils.log("info", "mpOTRContext reset");
             }
         });
 

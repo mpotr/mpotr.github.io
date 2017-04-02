@@ -4,6 +4,7 @@ define([], function () {
     return {
         client: undefined,
         context: undefined,
+
         /**
          * Debug module initialization
          */
@@ -11,12 +12,14 @@ define([], function () {
             this.client = require('client');
             this.context = this.client.context;
         },
+
         /**
          * Adds all peers from friend-list
          */
         addAll: function() {
             this.client.friends.forEach(conn => this.client.addPeer(conn));
         },
+
         /**
          * Connects to the peer server with specified ID
          * If no ID was specified random one is set
@@ -29,6 +32,7 @@ define([], function () {
 
             $("#init").click();
         },
+
         /**
          * Simple log function
          * @param {string} level Message level
