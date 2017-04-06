@@ -4,6 +4,7 @@ define([], function () {
     return {
         client: undefined,
         context: undefined,
+        ee: undefined,
 
         /**
          * Debug module initialization
@@ -11,6 +12,7 @@ define([], function () {
         init: function() {
             this.client = require('client');
             this.context = this.client.context;
+            this.ee = require('events');
         },
 
         /**
@@ -49,6 +51,17 @@ define([], function () {
                     break;
                 default:
                     console.log(msg);
+            }
+        },
+
+        /**
+         * Outputs to console all subscriptions for specified
+         * type of event
+         * @param ev type of event (ee.MSG, ee.EVENTS)
+         */
+        listSubscriptions: function(ev) {
+            for (let i in ev) {
+                console.log(ev[i], ': ', this.ee.ee.getListeners(ev[i]));
             }
         }
     }
