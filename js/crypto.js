@@ -714,7 +714,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             );
 
             let data = {};
-            data["type"] = $_.MSG.MPOTR_SHUTRDOWN;
+            data["type"] = $_.MSG.MPOTR_SHUTDOWN;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
@@ -836,7 +836,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             }
         });
 
-        $_.ee.addListener($_.MSG.MPOTR_SHUTRDOWN, (conn, data) => {
+        $_.ee.addListener($_.MSG.MPOTR_SHUTDOWN, (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
                 utils.log('alert', "Signature check fail");
                 return;
