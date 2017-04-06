@@ -80,10 +80,12 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
      * @param {String} message
      */
     function writeToChat(author, message) {
-        // TODO: Add this function to client
+        let label = document.createElement('label');
+        label.innerText = `${author}: `;
         let msg = document.createElement('code');
-        msg.innerText = author + ': ' + unescape(message) + '\n';
+        msg.innerText = `${unescape(message)}\n`;
         let $chat = $('#chat');
+        $chat.append(label);
         $chat.append(msg);
         // Autoscroll
         $chat.scrollTop($chat[0].scrollHeight);
