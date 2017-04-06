@@ -695,12 +695,15 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
          * @param {Function} func A function to decorate
          * @returns {Function}
          */
-        this.checkStatus = function (statuses, func) {
+        this.checkStatus = (statuses, func) => {
+            let self = this;
+
             return function() {
-                if (statuses.indexOf(this.status) > -1) {
+                if (statuses.indexOf(self.status) > -1) {
                     func.apply(null, arguments);
                 } else {
-                    utils.log("info", "checkStatus failed")
+                    utils.log("info", `Status violation: expected status to be one of the [${statuses}], got ${this.status}`);
+                    utils.log("info", arguments);
                 }
             }
         };
