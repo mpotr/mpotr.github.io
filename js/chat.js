@@ -81,9 +81,9 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
      */
     function writeToChat(author, message) {
         let label = document.createElement('label');
-        label.innerText = `${author}: `;
+        label.textContent = `${author}: `;
         let msg = document.createElement('code');
-        msg.innerText = `${unescape(message)}\n`;
+        msg.textContent = `${unescape(message)}\n`;
         let $chat = $('#chat');
         $chat.append(label);
         $chat.append(msg);
