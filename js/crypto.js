@@ -453,7 +453,6 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
          */
         this.reset = function () {
             this["status"] = $_.STATUS.UNENCRYPTED;
-            this.shutdown_received = 0;
             this.shutdown_sended = false;
             this.myLongPubKey = undefined;
             this.myLongPrivKey = undefined;
@@ -475,15 +474,36 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             this.d_i = undefined;
             this.sig = undefined;
             this.c_i = undefined;
+
+            // OldBlue buffers
             this.client.frontier = [];
             this.client.lostMsg = [];
             this.client.delivered = [];
             this.client.undelivered = [];
+
             for (let i in this.rounds) {
                 this.rounds[i].reset();
             }
+
+            this.shutdown_received = {};
         };
         this.reset();
+
+        this.broadcastOldBlue = (data) => {
+            // OldBlue starts
+            data["parentsIDs"] = this.client.frontier.slice();
+            data["messageID"] = sha256.hex(
+                this.client.peer.id +
+                this.client.frontier.toString() +
+                data["data"]
+            );
+            this.signMessage(data);
+            // self-deliver
+            this.receiveMessage(data);
+            // OldBlue ends
+
+            this.client.broadcast(data);
+        };
 
         /**
          * Sends broadcast request to retrieve
@@ -543,19 +563,8 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
-            // OldBlue starts
-            data["parentsIDs"] = this.client.frontier.slice();
-            data["messageID"] = sha256.hex(
-                this.client.peer.id +
-                this.client.frontier.toString() +
-                encryptedText
-            );
-            this.signMessage(data);
-            // self-deliver
-            this.receiveMessage(data);
-            // OldBlue ends
 
-            this.client.broadcast(data);
+            this.broadcastOldBlue(data);
         };
 
         this.receiveMessage = function (data) {
@@ -629,16 +638,42 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                     this.client.delivered.unshift(candidateToDelivery);
                     this.client.undelivered.splice(i, 1);
 
-                    let msg = this.decryptMessage(candidateToDelivery["data"]);
-                    let author = candidateToDelivery["from"];
-                    this.client.writeToChat(author, msg);
-                    utils.log("info", "got \"" + msg + "\" from " + author);
+                    // Deliver message
+                    this.deliverMessage(candidateToDelivery);
                 }
             }
-            // oldBlue ends
+            // OldBlue ends
 
             if (this.client.isChatSynced()) {
                 $_.ee.emitEvent($_.EVENTS.CHAT_SYNCED);
+            }
+        };
+
+        this.deliverMessage = (msg) => {
+            switch (msg["type"]) {
+
+                case $_.MSG.MPOTR_CHAT:
+                    let text = this.decryptMessage(msg["data"]);
+                    let author = msg["from"];
+                    this.client.writeToChat(author, text);
+                    utils.log("info", "got \"" + text + "\" from " + author);
+                break;
+
+                case $_.MSG.MPOTR_SHUTDOWN:
+                    if (typeof(msg["data"]) !== typeof("")) {
+                        utils.log('alert', `Got empty MPOTR_SHUTDOWN msg from ${msg["from"]}`);
+                        return;
+                    }
+
+                    if (this.receiveShutdown(msg["from"], msg["data"])) {
+                        $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
+                        utils.log("info", "mpOTRContext reset");
+                    }
+                break;
+
+                default:
+                    utils.log("info", `Got unexpected type of message: ${msg["type"]}`);
+                    utils.log("info", msg);
             }
         };
 
@@ -711,6 +746,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         this.sendShutdown = function () {
             // TODO: think about keylength 64
             let secret = `p=${this.myEphPrivKey.p}, q=${this.myEphPrivKey.q}, e=${this.myEphPrivKey.e}`;
+
             let encryptedText = cryptico.encryptAESCBC(
                 secret,
                 this.sessionKey.slice(0, 32)
@@ -721,78 +757,42 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
             data["data"] = encryptedText;
-            this.signMessage(data);
 
-            this.client.broadcast(data);
+            this.broadcastOldBlue(data);
 
             this.shutdown_sended = true;
         };
 
-        this.receiveShutdown = function (msg) {
-            if (this["status"] === $_.STATUS.UNENCRYPTED) {
-                return false;
+        this.receiveShutdown = (from, keys) => {
+            if (from !== this.client.peer.id && !this.shutdown_sended) {
+                this.stopChat();
             }
 
-            if (!this.shutdown_sended) {
-                this.sendShutdown();
+            if (keys === null) {
+                utils.log("info", `${from} was disconnected`);
+            } else {
+                // TODO: Publish keys
+                utils.log("info", `shutdown from ${from} received: ${this.decryptMessage(keys)}`);
             }
 
-            utils.log("info", "shutdown from " + msg["from"] + " received: " + this.decryptMessage(msg["data"]));
+            this.shutdown_received[from] = true;
 
-            // TODO: Holy fucking shit! +1? Really?
-            this.shutdown_received += 1;
-
-            return this.shutdown_received === this.client.connList.length;
+            return Object.values(this.shutdown_received).indexOf(false) === -1;
         };
 
         this.stopChat = function () {
-            let promises = [];
-            let resolves = {};
+            this.status = $_.STATUS.SHUTDOWN;
 
             $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_START);
             $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
 
-            promises.push(new Promise((resolve) => {
-                $_.ee.addOnceListener($_.EVENTS.CHAT_SYNCED, resolve);
-            }));
-
-            for (let peer of this.client.connList.peers) {
-                promises.push(new Promise((resolve) => {
-                    resolves[peer] = resolve;
-                }))
-            }
-
-            let chatSyncListener = (conn, data) => {
-
-                if (!this.checkSig(data, conn.peer)) {
-                    utils.log('alert', "Signature check fail");
-                    return;
-                }
-
-                resolves[conn.peer]();
-            };
-
-            $_.ee.addListener($_.MSG.CHAT_SYNC_RES, chatSyncListener);
-
-            Promise.all(promises).then(() => {
-                $_.ee.removeListener($_.MSG.CHAT_SYNC_RES, chatSyncListener);
-                this.sendShutdown();
-            });
-
-            let data = {
-                "type": $_.MSG.CHAT_SYNC_REQ,
-                "sid": this.sid,
-                "connList": this.client.connList.peers.concat(this.client.peer.id)
-            };
-            this.signMessage(data);
-            this.client.broadcast(data);
-
-            if (this.client.isChatSynced()) {
-                $_.ee.emitEvent($_.EVENTS.CHAT_SYNCED);
-            } else {
-                this.deliveryRequest();
-            }
+            this.sendShutdown();
         };
+
+        // Change status on start of chat
+        $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
+            this.status = $_.STATUS.MPOTR;
+        });
 
         // Reset context on chat shutdown
         $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
@@ -800,13 +800,15 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         });
 
         // Init received! Checking current chat status and starting new one!
-        $_.ee.addListener($_.MSG.MPOTR_INIT, (conn, data) => {
-            if (this.status === $_.STATUS.UNENCRYPTED) {
-                $_.ee.emitEvent($_.EVENTS.MPOTR_INIT, [conn, data]);
-            }
-        });
+        $_.ee.addListener($_.MSG.MPOTR_INIT, this.checkStatus([$_.STATUS.UNENCRYPTED], (conn, data) => {
+            $_.ee.emitEvent($_.EVENTS.MPOTR_INIT, [conn, data]);
+        }));
 
         $_.ee.addListener($_.EVENTS.MPOTR_INIT, (conn, data) => {
+            for (let peer of this.client.connList.peers) {
+                this.shutdown_received[peer] = false;
+            }
+
             // Initiating authentication phase
             let authenticationPhase = this.InitAuthenticationPhase();
 
@@ -818,6 +820,15 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         });
 
         $_.ee.addListener($_.MSG.MPOTR_CHAT, (conn, data) => {
+            if (!this.checkSig(data, data["from"])) {
+                utils.log('alert', "Signature check fail");
+                return;
+            }
+
+            this.receiveMessage(data);
+        });
+
+        $_.ee.addListener($_.MSG.MPOTR_SHUTDOWN, (conn, data) => {
             if (!this.checkSig(data, data["from"])) {
                 utils.log('alert', "Signature check fail");
                 return;
@@ -839,17 +850,20 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             }
         });
 
-        $_.ee.addListener($_.MSG.MPOTR_SHUTDOWN, (conn, data) => {
-            if (!this.checkSig(data, conn.peer)) {
-                utils.log('alert', "Signature check fail");
-                return;
+        $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, this.checkStatus([$_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (conn) => {
+            if (this.client.amILeader()) {
+                $_.ee.addOnceListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
+                    setTimeout(() => {
+                        this.start();
+                    }, 0)
+                })
             }
 
-            if (this.receiveShutdown(data)) {
+            if (this.receiveShutdown(conn.peer, null)) {
                 $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
                 utils.log("info", "mpOTRContext reset");
             }
-        });
+        }));
 
         this.InitAuthenticationPhase = function () {
             let currentRound = 1;

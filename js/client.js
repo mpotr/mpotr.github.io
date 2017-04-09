@@ -44,12 +44,35 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
             this.context = new mpOTRContext(this);
             let context = this.context;
 
+            /**
+             * Transport section:
+             *
+             * - connList.peers
+             * - connList.add
+             * - connList.remove
+             * - action on peer's addition
+             */
+
+            /**
+             * Auxiliary list with peers' nicknames
+             */
             if (!this.connList.peers) {
                 Object.defineProperty(this.connList, "peers", {
                     value: []
                 })
             }
 
+            /**
+             * this.connList.add - handles peer addition.
+             *
+             * This function is responsible for:
+             *
+             * - addition of a new peer to the connList;
+             * - duplicate removing;
+             * - emitting event CONN_POOL_ADD to notify other
+             * components about new peer;
+             * - corresponding modification of auxiliary list connList.peers.
+             */
             if (!this.connList.add) {
                 Object.defineProperty(this.connList, "add", {
                     value: function(newConn) {
@@ -77,6 +100,14 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 });
             }
 
+            /**
+             * this.connList.remove - handles peer removing.
+             *
+             * This function is responsible for:
+             * - removing a peer from connList
+             * - corresponding removing of a peer from auxiliary list connList.peers
+             * - emitting event CONN_POOL_REMOVE to notify other components about peer removal;
+             */
             if (!this.connList.remove) {
                 Object.defineProperty(this.connList, "remove", {
                     value: function(elem) {
@@ -95,18 +126,10 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 });
             }
 
-            $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
-                context.status = $_.STATUS.MPOTR;
-            });
-
-            $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
-                client.blockChat = false;
-            });
-            
-            $_.ee.addListener($_.EVENTS.BLOCK_CHAT, () => {
-                client.blockChat = true;
-            });
-
+            /**
+             * Action on peer's addition: send my connections to
+             * the new participant.
+             */
             $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
                 conn.send({
                     "type": $_.MSG.CONN_POOL_SYNC,
@@ -114,15 +137,9 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 });
             });
 
-            // Сlient message handlers
-            $_.ee.addListener($_.MSG.UNENCRYPTED, (conn, data) => {
-                if (context.status !== $_.STATUS.UNENCRYPTED) {
-                    utils.log('info', 'Got unencrypted message during non-unencrypted phase');
-                } else {
-                    client.writeToChat(conn.peer, data["data"]);
-                }
-            });
-
+            /**
+             * Add peers got from new connections
+             */
             $_.ee.addListener($_.MSG.CONN_POOL_SYNC, (conn, data) => {
                 if (context.status !== $_.STATUS.UNENCRYPTED) {
                     utils.log('info', 'Got connection pool synchronization during non-unencrypted phase');
@@ -133,41 +150,38 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 }
             });
 
-            $_.ee.addListener($_.MSG.CHAT_SYNC_REQ, (conn, data) => {
-                if (!context.checkSig(data, conn.peer)) {
-                    utils.log('alert', "Signature check fail");
-                    return;
-                }
+            /**
+             * End of transport section
+             */
 
-                $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
+            /**
+             * Block chat section
+             */
 
-                // Removing 'dead' connections
-                let toDel = client.connList.filter((elem) => {
-                    return data['connList'].indexOf(elem.peer) === -1;
-                });
-
-                for (let elem of toDel) {
-                    elem.close();
-                    client.connList.remove(elem);
-                }
-
-                $_.ee.addOnceListener($_.EVENTS.CHAT_SYNCED, () => {
-                    // send message to the sync boy
-                    let message = {
-                        "type": $_.MSG.CHAT_SYNC_RES,
-                        "sid": context.sid
-                    };
-                    context.signMessage(message);
-
-                    conn.send(message);
-                });
-
-                if (client.isChatSynced()) {
-                    $_.ee.emitEvent($_.EVENTS.CHAT_SYNCED);
-                } else {
-                    context.deliveryRequest();
-                }
+            /**
+             * Unblock chat when shutdown phase ends
+             */
+            $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
+                client.blockChat = false;
             });
+
+            /**
+             * Block chat. At the moment is used while shutdown phase is running
+             */
+            $_.ee.addListener($_.EVENTS.BLOCK_CHAT, () => {
+                client.blockChat = true;
+            });
+
+            /**
+             * End of block chat section
+             */
+
+            /**
+             * Handler for unencrypted messages
+             */
+            $_.ee.addListener($_.MSG.UNENCRYPTED, context.checkStatus([$_.STATUS.UNENCRYPTED], (conn, data) => {
+                client.writeToChat(conn.peer, data["data"]);
+            }));
         },
 
         /**
@@ -318,25 +332,6 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
      */
     function handleDisconnect(conn) {
         client.connList.remove(conn);
-
-        if (client.context.status === $_.STATUS.MPOTR) {
-            $_.ee.emitEvent($_.EVENTS.BLOCK_CHAT);
-
-            if (client.connList.length === 0) {
-                $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
-                utils.log("info", "mpOTRContext reset");
-                return;
-            }
-
-            if (client.amILeader()) {
-                $_.ee.addOnceListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, function() {
-                    setTimeout(() => {
-                        client.context.start();
-                    }, 0);
-                });
-                client.context.stopChat();
-            }
-        }
     }
 
     return client;

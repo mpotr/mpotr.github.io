@@ -29,9 +29,7 @@ define(['eventEmitter'], function (EventEmitter) {
             MPOTR_AUTH: "MSG.MPOTR_AUTH",
             MPOTR_CHAT: "MSG.MPOTR_CHAT",
             MPOTR_LOST_MSG: "MSG.MPOTR_LOST_MSG",
-            MPOTR_SHUTDOWN: "MSG.MPOTR_SHUTDOWN",
-            CHAT_SYNC_REQ: "MSG.CHAT_SYNC_REQ",
-            CHAT_SYNC_RES: "MSG.CHAT_SYNC_RES"
+            MPOTR_SHUTDOWN: "MSG.MPOTR_SHUTDOWN"
         },
 
         /**
