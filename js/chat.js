@@ -40,6 +40,7 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
                 break;
 
             case $_.STATUS.AUTH:
+            case $_.STATUS.SHUTDOWN:
                 notify("Wait a bit. Now is ");
                 clearFlag = false;
                 break;
