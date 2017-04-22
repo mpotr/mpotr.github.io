@@ -114,12 +114,12 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 });
             });
 
-            /** 
-			 * On removing conn - send message
-			 */
-			$_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
-				this.sendMessage(conn.peer, $_.MSG.CONN_POOL_REMOVE);
-			});
+            /**
+             * On removing conn - send message
+             */
+            $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
+                this.sendMessage(conn.peer, $_.MSG.CONN_POOL_REMOVE);
+            });
 
 
             // Сlient message handlers
