@@ -25,6 +25,7 @@ define(['eventEmitter'], function (EventEmitter) {
         MSG: {
             UNENCRYPTED: "MSG.UNENCRYPTED",
             CONN_POOL_SYNC: "MSG.CONN_POOL_SYNC",
+			CONN_POOL_REMOVE: "MSG.CONN_POOL_REMOVE",
             MPOTR_INIT: "MSG.MPOTR_INIT",
             MPOTR_AUTH: "MSG.MPOTR_AUTH",
             MPOTR_CHAT: "MSG.MPOTR_CHAT",
