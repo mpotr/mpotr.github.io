@@ -102,7 +102,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
             $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
                 client.blockChat = false;
             });
-            
+
             $_.ee.addListener($_.EVENTS.BLOCK_CHAT, () => {
                 client.blockChat = true;
             });
@@ -145,9 +145,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
              * Incoming message to delete lost connections
              */
             $_.ee.addListener($_.MSG.CONN_POOL_REMOVE, (conn, data) => {
-                for (let peer of data["data"]) {
-                    client.removePeer(peer);
-                }
+                client.removePeer(data["data"]);
             });
 
             $_.ee.addListener($_.MSG.CHAT_SYNC_REQ, (conn, data) => {
@@ -259,7 +257,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
          */
         removePeer: function (peer) {
             let idx = client.connList.peers.indexOf(peer);
-            if (idx > -1 && this.peer !== peer) {
+            if (idx > -1) {
                 let elem = client.connList[idx];
                 elem.close();
             }
