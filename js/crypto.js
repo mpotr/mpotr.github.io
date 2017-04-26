@@ -737,7 +737,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 if (statuses.indexOf(self.status) > -1) {
                     func.apply(null, arguments);
                 } else {
-                    utils.log("info", `Status violation: expected status to be one of the [${statuses}], got ${this.status}`);
+                    utils.log("info", `Status violation: expected status to be one of the [${statuses}], got ${self.status}`);
                     utils.log("info", arguments);
                 }
             }

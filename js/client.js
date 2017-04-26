@@ -138,6 +138,13 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
             });
 
             /**
+             * On removing conn - send message
+             */
+            $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
+                this.sendMessage(conn.peer, $_.MSG.CONN_POOL_REMOVE);
+            });
+
+            /**
              * Add peers got from new connections
              */
             $_.ee.addListener($_.MSG.CONN_POOL_SYNC, (conn, data) => {
@@ -148,6 +155,13 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                         client.addPeer(peer);
                     }
                 }
+            });
+
+            /**
+             * Incoming message to delete lost connections
+             */
+            $_.ee.addListener($_.MSG.CONN_POOL_REMOVE, (conn, data) => {
+                client.closePeerByName(data["data"]);
             });
 
             /**
@@ -247,6 +261,19 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
         addFriend: function (friend) {
             if (this.whitelist.indexOf(friend) === -1) {
                 this.whitelist.push(friend);
+            }
+        },
+
+        /**
+         * Close peer by name
+         * @param {String} peer peer to delete
+         */
+        closePeerByName: function (peer) {
+            let idx = client.connList.peers.indexOf(peer);
+
+            if (idx > -1) {
+                let elem = client.connList[idx];
+                elem.close();
             }
         },
 
