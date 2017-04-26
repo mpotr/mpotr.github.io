@@ -34,7 +34,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
 
             this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'});
             this.peer.on('connection', function (conn) {
-                client.addPeer(conn);
+                $_.ee.emitEvent(($_.EVENTS.NEW_CONN), [conn]);
             });
 
             this.peer.on('open', (id) => {
@@ -125,6 +125,26 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                     }
                 });
             }
+
+            /**
+             * Action on new connection in unencrypted phase
+             */
+            $_.ee.addListener($_.EVENTS.NEW_CONN, context.checkStatus([$_.STATUS.UNENCRYPTED], (conn) => {
+                this.addPeer(conn);
+            }));
+
+            /**
+             * Action on new connection in mpotr phases: authentication, communication, shutdown
+             */
+            $_.ee.addListener($_.EVENTS.NEW_CONN, context.checkStatus([$_.STATUS.AUTH, $_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (conn) => {
+                if (conn.open) {
+                    conn.close()
+                } else {
+                    conn.on('open', () => {
+                        conn.close();
+                    })
+                }
+            }));
 
             /**
              * Action on peer's addition: send my connections to

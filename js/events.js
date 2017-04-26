@@ -8,6 +8,7 @@ define(['eventEmitter'], function (EventEmitter) {
          */
         EVENTS: {
             PEER_OPENED: 'EVENTS.PEER_OPENED',
+            NEW_CONN: 'EVENTS.NEW_CONN',
             MPOTR_INIT: 'EVENTS.MPOTR_INIT',
             MPOTR_START: 'EVENTS.MPOTR_START',
             MPOTR_SHUTDOWN_START: 'EVENTS.MPOTR_SHUTDOWN_START',
@@ -35,6 +36,8 @@ define(['eventEmitter'], function (EventEmitter) {
 
         /**
          * Client's status
+         * IMPORTANT: If you want to add / remove STATUS consider
+         * rewriting all checkStatus() wrappers.
          */
         STATUS: {
             UNENCRYPTED:    "STATUS.UNENCRYPTED",
