@@ -69,7 +69,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
              *
              * - addition of a new peer to the connList;
              * - duplicate removing;
-             * - emitting event CONN_POOL_ADD to notify other
+             * - emitting event CONN_LIST_ADD to notify other
              * components about new peer;
              * - corresponding modification of auxiliary list connList.peers.
              */
@@ -81,10 +81,10 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                         if (idx === -1) {
                             this.push(newConn);
                             this.peers.push(newConn.peer);
+                            $_.ee.emitEvent($_.EVENTS.CONN_LIST_ADD, [newConn]);
                         } else if (this[idx].id > newConn.id) {
                             newConn.off("close");
                             newConn.close();
-                            return;
                         } else {
                             this[idx].off("close");
                             this[idx].close();
@@ -93,9 +93,6 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                             this.push(newConn);
                             this.peers.push(newConn.peer);
                         }
-                        $_.ee.emitEvent($_.EVENTS.CONN_POOL_ADD, [newConn]);
-
-                        return this;
                     }
                 });
             }
@@ -106,7 +103,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
              * This function is responsible for:
              * - removing a peer from connList
              * - corresponding removing of a peer from auxiliary list connList.peers
-             * - emitting event CONN_POOL_REMOVE to notify other components about peer removal;
+             * - emitting event CONN_LIST_REMOVE to notify other components about peer removal;
              */
             if (!this.connList.remove) {
                 Object.defineProperty(this.connList, "remove", {
@@ -116,7 +113,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                         if (idx > -1) {
                             this.splice(idx, 1);
                             this.peers.splice(idx, 1);
-                            $_.ee.emitEvent($_.EVENTS.CONN_POOL_REMOVE, [elem]);
+                            $_.ee.emitEvent($_.EVENTS.CONN_LIST_REMOVE, [elem]);
 
                             return elem;
                         }
@@ -150,9 +147,9 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
              * Action on peer's addition: send my connections to
              * the new participant.
              */
-            $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
+            $_.ee.addListener($_.EVENTS.CONN_LIST_ADD, (conn) => {
                 conn.send({
-                    "type": $_.MSG.CONN_POOL_SYNC,
+                    "type": $_.MSG.CONN_LIST_SYNC,
                     "data": this.connList.peers
                 });
             });
@@ -160,14 +157,14 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
             /**
              * On removing conn - send message
              */
-            $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
-                this.sendMessage(conn.peer, $_.MSG.CONN_POOL_REMOVE);
+            $_.ee.addListener($_.EVENTS.CONN_LIST_REMOVE, (conn) => {
+                this.sendMessage(conn.peer, $_.MSG.CONN_LIST_REMOVE);
             });
 
             /**
              * Add peers got from new connections
              */
-            $_.ee.addListener($_.MSG.CONN_POOL_SYNC, (conn, data) => {
+            $_.ee.addListener($_.MSG.CONN_LIST_SYNC, (conn, data) => {
                 if (context.status !== $_.STATUS.UNENCRYPTED) {
                     utils.log('info', 'Got connection pool synchronization during non-unencrypted phase');
                 } else {
@@ -180,7 +177,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
             /**
              * Incoming message to delete lost connections
              */
-            $_.ee.addListener($_.MSG.CONN_POOL_REMOVE, (conn, data) => {
+            $_.ee.addListener($_.MSG.CONN_LIST_REMOVE, (conn, data) => {
                 client.closePeerByName(data["data"]);
             });
 

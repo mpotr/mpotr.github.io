@@ -15,8 +15,8 @@ define(['eventEmitter'], function (EventEmitter) {
             MPOTR_SHUTDOWN_FINISH: 'EVENTS.MPOTR_SHUTDOWN_FINISH',
             BLOCK_CHAT: 'EVENTS.BLOCK_CHAT',
             CHAT_SYNCED: 'EVENTS.CHAT_SYNCED',
-            CONN_POOL_ADD: "EVENTS.CONN_POOL_ADD",
-            CONN_POOL_REMOVE: "EVENTS.CONN_POOL_REMOVE",
+            CONN_LIST_ADD: "EVENTS.CONN_LIST_ADD",
+            CONN_LIST_REMOVE: "EVENTS.CONN_LIST_REMOVE",
             INCOMING_MSG: "EVENTS.INCOMING_MSG"
         },
 
@@ -25,8 +25,8 @@ define(['eventEmitter'], function (EventEmitter) {
          */
         MSG: {
             UNENCRYPTED: "MSG.UNENCRYPTED",
-            CONN_POOL_SYNC: "MSG.CONN_POOL_SYNC",
-            CONN_POOL_REMOVE: "MSG.CONN_POOL_REMOVE",
+            CONN_LIST_SYNC: "MSG.CONN_LIST_SYNC",
+            CONN_LIST_REMOVE: "MSG.CONN_LIST_REMOVE",
             MPOTR_INIT: "MSG.MPOTR_INIT",
             MPOTR_AUTH: "MSG.MPOTR_AUTH",
             MPOTR_CHAT: "MSG.MPOTR_CHAT",

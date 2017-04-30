@@ -850,7 +850,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             }
         });
 
-        $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, this.checkStatus([$_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (conn) => {
+        $_.ee.addListener($_.EVENTS.CONN_LIST_REMOVE, this.checkStatus([$_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (conn) => {
             if (this.client.amILeader()) {
                 $_.ee.addOnceListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
                     setTimeout(() => {

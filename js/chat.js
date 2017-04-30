@@ -196,9 +196,9 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
         client.nickname = id;
     });
 
-    $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, updateContactList);
+    $_.ee.addListener($_.EVENTS.CONN_LIST_ADD, updateContactList);
 
-    $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, updateContactList);
+    $_.ee.addListener($_.EVENTS.CONN_LIST_REMOVE, updateContactList);
 
     $_.ee.addListener($_.EVENTS.MPOTR_INIT, () => {
         $mpOTR.text("Starting mpOTR...");
@@ -224,11 +224,11 @@ require(['jquery', 'client', 'utils', 'events'], function($, client, utils, $_) 
         notify("Chat started!");
     });
 
-    $_.ee.addListener($_.EVENTS.CONN_POOL_ADD, (conn) => {
+    $_.ee.addListener($_.EVENTS.CONN_LIST_ADD, (conn) => {
         notify(conn.peer + " has been added");
     });
 
-    $_.ee.addListener($_.EVENTS.CONN_POOL_REMOVE, (conn) => {
+    $_.ee.addListener($_.EVENTS.CONN_LIST_REMOVE, (conn) => {
         notify(conn.peer + " has gone offline");
     });
 });
