@@ -6,10 +6,6 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
      * @property {Peer} peer Peer object
      * @property {DataConnection[]} connList An array of currently connected users
      * @property {String} nickname A nickname used in chat
-     * @property {Messages[]} frontier OldBlue protocol internal struct
-     * @property {Messages[]} lostMsg OlbDlue protocol internal struct
-     * @property {Messages[]} delivered OldBlue protocol internal struct
-     * @property {Messages[]} undelivered OldBlue protocol internal struct
      * @property {String[]} whitelist a list of hosts allowed to connect to
      * @property {Boolean} blockChat a flag for blocking user messages
      */
@@ -17,10 +13,6 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
         peer: undefined,
         connList: [],
         nickname: "",
-        frontier: [],
-        lostMsg: [],
-        delivered: [],
-        undelivered: [],
         whitelist: [],
         blockChat: false,
 
@@ -355,7 +347,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
          * @returns {boolean}
          */
         isChatSynced: function () {
-            return this.lostMsg.length === 0 && this.undelivered.length === 0;
+            return this.context.lostMsg.length === 0 && this.context.undelivered.length === 0;
         }
     };
 

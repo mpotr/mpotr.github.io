@@ -475,10 +475,10 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             this.c_i = undefined;
 
             // OldBlue buffers
-            this.client.frontier = [];
-            this.client.lostMsg = [];
-            this.client.delivered = [];
-            this.client.undelivered = [];
+            this.frontier = [];
+            this.lostMsg = [];
+            this.delivered = [];
+            this.undelivered = [];
 
             for (let i in this.rounds) {
                 this.rounds[i].reset();
@@ -490,10 +490,10 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
 
         this.broadcastOldBlue = (data) => {
             // OldBlue starts
-            data["parentsIDs"] = this.client.frontier.slice();
+            data["parentsIDs"] = this.frontier.slice();
             data["messageID"] = sha256.hex(
                 this.client.peer.id +
-                this.client.frontier.toString() +
+                this.frontier.toString() +
                 data["data"]
             );
             this.signMessage(data);
@@ -514,7 +514,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 "sid": this.sid
             };
 
-            for (let id of this.client.lostMsg) {
+            for (let id of this.lostMsg) {
                 data["lostMsgID"] = id;
                 this.signMessage(data);
 
@@ -531,19 +531,19 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
          */
         this.deliveryResponse = function (data) {
             // Searching in undelivered messages
-            let idx = this.client.undelivered.map(function (elem) {
+            let idx = this.undelivered.map(function (elem) {
                 return elem["messageID"];
             }).indexOf(data["lostMsgID"]);
             if (idx !== -1) {
-                return this.client.undelivered[idx];
+                return this.undelivered[idx];
             }
 
             // Searching in delivered messages
-            idx = this.client.delivered.map(function (elem) {
+            idx = this.delivered.map(function (elem) {
                 return elem["messageID"];
             }).indexOf(data["lostMsgID"]);
             if (idx !== -1) {
-                return this.client.delivered[idx];
+                return this.delivered[idx];
             }
 
             // Not found
@@ -570,46 +570,46 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             // OldBlue
 
             // Ignore duplicates
-            if (this.client.delivered.filter((elem) => {
+            if (this.delivered.filter((elem) => {
                     return elem["messageID"] === data["messageID"];
-                }).length > 0 || this.client.undelivered.filter((elem) => {
+                }).length > 0 || this.undelivered.filter((elem) => {
                     return elem["messageID"] === data["messageID"];
                 }).length > 0) {
                 return;
             }
 
-            let index = this.client.lostMsg.indexOf(data["messageID"]);
+            let index = this.lostMsg.indexOf(data["messageID"]);
 
             if (index > -1) {
-                this.client.lostMsg.splice(index, 1);
+                this.lostMsg.splice(index, 1);
             }
 
             // Lost message delivery request
             for (let id of data["parentsIDs"]) {
-                if (this.client.delivered.filter((elem) => {
+                if (this.delivered.filter((elem) => {
                         return elem["messageID"] === id;
-                    }).length === 0 && this.client.undelivered.filter((elem) => {
+                    }).length === 0 && this.undelivered.filter((elem) => {
                         return elem["messageID"] === id;
                     }).length === 0) {
-                    this.client.lostMsg.push(id);
+                    this.lostMsg.push(id);
                 }
             }
 
             this.deliveryRequest();
 
-            this.client.undelivered.push(data);
+            this.undelivered.push(data);
 
             // Looking in undelivered buffer for messages that can be delivered
             // Means all its parents was delivered
-            for (let i = this.client.undelivered.length - 1; i >= 0; --i) {
-                let candidateToDelivery = this.client.undelivered[i];
+            for (let i = this.undelivered.length - 1; i >= 0; --i) {
+                let candidateToDelivery = this.undelivered[i];
                 let canBeDelivered = true;
 
                 // Looking for parents of current message in delivered messages
                 for (let parent of candidateToDelivery["parentsIDs"]) {
                     let parentWasDelivered = false;
 
-                    for (let deliveredMsg of this.client.delivered) {
+                    for (let deliveredMsg of this.delivered) {
                         if (deliveredMsg["messageID"] === parent) {
                             parentWasDelivered = true;
                             break;
@@ -625,27 +625,23 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 if (canBeDelivered) {
                     // Removing parents from frontier
                     for (let parent of candidateToDelivery["parentsIDs"]) {
-                        let j = this.client.frontier.indexOf(parent);
+                        let j = this.frontier.indexOf(parent);
 
                         if (j > -1) {
-                            this.client.frontier.splice(j, 1);
+                            this.frontier.splice(j, 1);
                         }
                     }
                     // Delivered message now in frontier
-                    this.client.frontier.push(candidateToDelivery["messageID"]);
+                    this.frontier.push(candidateToDelivery["messageID"]);
                     // And officially delivered :)
-                    this.client.delivered.unshift(candidateToDelivery);
-                    this.client.undelivered.splice(i, 1);
+                    this.delivered.unshift(candidateToDelivery);
+                    this.undelivered.splice(i, 1);
 
                     // Deliver message
                     this.deliverMessage(candidateToDelivery);
                 }
             }
             // OldBlue ends
-
-            if (this.client.isChatSynced()) {
-                $_.ee.emitEvent($_.EVENTS.CHAT_SYNCED);
-            }
         };
 
         this.deliverMessage = (msg) => {
