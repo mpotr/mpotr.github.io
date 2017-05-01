@@ -567,6 +567,11 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         };
 
         this.receiveMessage = function (data) {
+            if (!this.checkSig(data, data["from"])) {
+                utils.log('alert', "Signature check fail");
+                return;
+            }
+
             // OldBlue
 
             // Ignore duplicates
@@ -666,10 +671,16 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                     }
                 break;
 
+                case $_.MSG.BD_KEY_RATCHET:
+                    this.bd.handleBDMessage(msg);
+                break;
+
                 default:
                     utils.log("info", `Got unexpected type of message: ${msg["type"]}`);
                     utils.log("info", msg);
             }
+
+            $_.ee.emitEvent($_.EVENTS.OLDBLUE_MSG_DELIVERED, [msg]);
         };
 
         this.decryptMessage = function (text) {
@@ -731,9 +742,6 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             return function() {
                 if (statuses.indexOf(self.status) > -1) {
                     func.apply(null, arguments);
-                } else {
-                    utils.log("info", `Status violation: expected status to be one of the [${statuses}], got ${self.status}`);
-                    utils.log("info", arguments);
                 }
             }
         };
@@ -814,21 +822,10 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             });
         });
 
-        $_.ee.addListener($_.MSG.MPOTR_CHAT, (conn, data) => {
-            if (!this.checkSig(data, data["from"])) {
-                utils.log('alert', "Signature check fail");
-                return;
-            }
-
+        $_.ee.addListener($_.MSG.MPOTR_CHAT, (_, data) => {
             this.receiveMessage(data);
         });
-
-        $_.ee.addListener($_.MSG.MPOTR_SHUTDOWN, (conn, data) => {
-            if (!this.checkSig(data, data["from"])) {
-                utils.log('alert', "Signature check fail");
-                return;
-            }
-
+        $_.ee.addListener($_.MSG.MPOTR_SHUTDOWN, (_, data) => {
             this.receiveMessage(data);
         });
 
@@ -1018,7 +1015,186 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             this.rounds[currentRound].send();
 
             return authenticationPhase;
-        }
+        };
+
+        this.bd = {
+            MAX_MSGS_ON_THE_KEY: 100,
+            KEY_TTL: 60 * 1000
+        };
+
+        this.bd.reset = (update_key_id) => {
+            this.bd.ratcheting_now = false;
+            this.bd.sent_r1 = false;
+            this.bd.sent_r2 = false;
+
+            this.bd.n = this.client.connList.peers.length + 1;
+            this.bd.n_bi = new BigInteger(this.bd.n.toString(), 10);
+            this.bd.messages_on_this_key = 0;
+
+            if (update_key_id) {
+                this.bd.current_key_id += 1;
+            } else {
+                this.bd.current_key_id = 0;
+            }
+
+            this.bd.x = NaN;
+            this.bd.ks = {};
+            this.bd.Ks = {};
+
+            this.bd.sorted_peers = this.client.connList.peers.slice();
+            this.bd.sorted_peers.push(this.client.peer.id);
+            this.bd.sorted_peers.sort();
+
+            this.bd.k = this.bd.sorted_peers.indexOf(this.client.peer.id);
+            this.bd.left = this.bd.sorted_peers[(this.bd.k - 1 + this.bd.n) % this.bd.n];
+            this.bd.right = this.bd.sorted_peers[(this.bd.k + 1) % this.bd.n];
+            this.bd.last_kr_time = performance.now();
+        };
+
+        this.bd.sendRound1 = () => {
+            utils.log('info',
+                `Updating session keys:\n` +
+                `${this.bd.messages_on_this_key} messages were already sent with the current key\n` +
+                `${performance.now() - this.bd.last_kr_time} ms elapsed since the last Key Ratcheting`
+            );
+
+            this.bd.ratcheting_now = true;
+            this.bd.x = generateNumber().mod(qmod);
+            this.bd.ks[this.client.peer.id] = g.modPow(this.bd.x, pmod);
+
+            this.broadcastOldBlue({
+                type: $_.MSG.BD_KEY_RATCHET,
+                round: 1,
+                from: this.client.peer.id,
+                key_id: this.bd.current_key_id + 1,
+                data: this.bd.ks[this.client.peer.id].toString()
+            });
+
+            this.bd.sent_r1 = true;
+        };
+
+        this.bd.sendRound2 = () => {
+
+            this.broadcastOldBlue({
+                type: $_.MSG.BD_KEY_RATCHET,
+                round: 2,
+                from: this.client.peer.id,
+                key_id: this.bd.current_key_id + 1,
+                data: this.bd.Ks[this.client.peer.id].toString()
+            });
+
+            this.bd.sent_r2 = true;
+        };
+
+        this.bd.handleBDMessage = (msg) => {
+            let round = msg["round"];
+            let from = msg["from"];
+            let data = msg["data"];
+            let key_id = msg["key_id"];
+            let left, right;
+
+            // OldBlue self-delivery
+            if (from === this.client.peer.id) {
+                return;
+            }
+
+            if (key_id !== this.bd.current_key_id + 1) {
+                // if less, ignore
+                // if more, looks like fuckup
+                return;
+            }
+
+            switch (round) {
+                case 1:
+                    if (!this.bd.sent_r1) {
+                        this.bd.sendRound1();
+                    }
+
+                    this.bd.ks[from] = new BigInteger(data, 10);
+
+                    left = this.bd.ks[this.bd.left];
+                    right = this.bd.ks[this.bd.right];
+
+                    if (left && right) {
+                        this.bd.Ks[this.client.peer.id] = (right.multiply(left.modInverse(pmod))).modPow(this.bd.x, pmod);
+
+                        if (!this.bd.sent_r2) {
+                            this.bd.sendRound2();
+                        }
+                    }
+
+                    break;
+                case 2:
+                    this.bd.Ks[from] = new BigInteger(data, 10);
+
+                    if (Object.keys(this.bd.Ks).length === this.bd.n) {
+                        left = this.bd.ks[this.bd.left];
+                        let shared_secret = left.modPow(this.bd.x.multiply(this.bd.n_bi), pmod);
+
+                        for (let i = 0; i < this.bd.n - 1; ++i) {
+                            let d = this.bd.n_bi.subtract(new BigInteger((i + 1).toString(), 10));
+
+                            shared_secret = shared_secret
+                                .multiply(this.bd.Ks[this.bd.sorted_peers[(this.bd.k + i) % this.bd.n]]
+                                    .modPow(d, pmod)).mod(pmod);
+                        }
+
+                        this.bd.reset(true);
+                        utils.log('info', `shared_secret = ${shared_secret}`);
+                    }
+
+                    break;
+                default:
+
+            }
+        };
+
+        /**
+         * When the time since the last Key Ratcheting will
+         * be more than KEY_TTL a new one will be triggered
+         */
+        $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
+            this.bd.reset();
+        });
+
+        /**
+         * When messages_on_this_key > MAX_MSGS_ON_KEY
+         * Key Ratcheting will start.
+         */
+        $_.ee.addListener($_.EVENTS.OLDBLUE_MSG_DELIVERED, () => {
+            this.bd.messages_on_this_key += 1;
+        });
+
+        /**
+         * OldBlue listener for Key Ratcheting messages
+         */
+        $_.ee.addListener($_.MSG.BD_KEY_RATCHET, (_, data) => {
+            this.receiveMessage(data);
+        });
+
+        /**
+         * Daemon.
+         *
+         * Daemon is responsible for performing periodic tasks, like a
+         * key renewal or requesting for lost messages
+         */
+        this.daemon = setInterval(() => {
+            // Заменить на emitEvent
+            switch(this.status) {
+                case $_.STATUS.MPOTR:
+                    if (!this.bd.ratcheting_now) {
+                        let elapsed_since_last_kr = performance.now() - this.bd.last_kr_time;
+                        if (this.bd.messages_on_this_key > this.bd.MAX_MSGS_ON_THE_KEY || elapsed_since_last_kr > this.bd.KEY_TTL) {
+                            this.bd.sendRound1();
+                        }
+                    }
+
+                break;
+                default:
+
+                break;
+            }
+        }, 3000);
     }
 
     return mpOTRContext;

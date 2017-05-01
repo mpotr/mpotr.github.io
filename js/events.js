@@ -16,7 +16,8 @@ define(['eventEmitter'], function (EventEmitter) {
             BLOCK_CHAT: 'EVENTS.BLOCK_CHAT',
             CONN_LIST_ADD: "EVENTS.CONN_LIST_ADD",
             CONN_LIST_REMOVE: "EVENTS.CONN_LIST_REMOVE",
-            INCOMING_MSG: "EVENTS.INCOMING_MSG"
+            INCOMING_MSG: "EVENTS.INCOMING_MSG",
+            OLDBLUE_MSG_DELIVERED: "EVENTS.OLDBLUE_MSG_DELIVERED"
         },
 
         /**
@@ -30,7 +31,8 @@ define(['eventEmitter'], function (EventEmitter) {
             MPOTR_AUTH: "MSG.MPOTR_AUTH",
             MPOTR_CHAT: "MSG.MPOTR_CHAT",
             MPOTR_LOST_MSG: "MSG.MPOTR_LOST_MSG",
-            MPOTR_SHUTDOWN: "MSG.MPOTR_SHUTDOWN"
+            MPOTR_SHUTDOWN: "MSG.MPOTR_SHUTDOWN",
+            BD_KEY_RATCHET: "MSG.BD_KEY_RATCHET"
         },
 
         /**
