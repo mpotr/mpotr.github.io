@@ -71,17 +71,23 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                         let idx = this.peers.indexOf(newConn.peer);
 
                         if (idx === -1) {
+                            newConn.on('close', function() {
+                                handleDisconnect(this);
+                            });
                             this.push(newConn);
                             this.peers.push(newConn.peer);
                             $_.ee.emitEvent($_.EVENTS.CONN_LIST_ADD, [newConn]);
                         } else if (this[idx].id > newConn.id) {
-                            newConn.off("close");
                             newConn.close();
                         } else {
                             this[idx].off("close");
                             this[idx].close();
                             this.splice(idx, 1);
                             this.peers.splice(idx, 1);
+
+                            newConn.on('close', function() {
+                                handleDisconnect(this);
+                            });
                             this.push(newConn);
                             this.peers.push(newConn.peer);
                         }
@@ -230,10 +236,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
         addPeer: function (anotherPeer) {
             let success = (function(self) {
                 return function(conn) {
-                    conn.on('data', handleMessage)
-                        .on('close', function() {
-                            handleDisconnect(this);
-                        });
+                    conn.on('data', handleMessage);
 
                     self.addFriend(conn.peer);
                     self.connList.add(conn);
