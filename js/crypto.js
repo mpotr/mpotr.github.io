@@ -370,7 +370,12 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         let d_i = context.r_i.subtract(context.myLongPrivKey.multiply(c_i_int).mod(qmod)).mod(qmod);
         let sig = context.myEphPrivKey.signStringWithSHA256(c_i_hashed);
 
-        result.update["sessionKey"] = sha256.hex(n);
+        // Adding first session key
+        context.bd.session_keys[0] = {
+            key: sha256.hex(n).slice(0, 32),
+            received_from: {}
+        };
+
         result.update["nonce"] = nonces;
         result.update["sconf"] = sconf;
         result.update["d_i"] = d_i;
@@ -467,7 +472,6 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             this.xoredNonce = {};
             this.bigT = {};
             this.myBigT = undefined;
-            this.sessionKey = undefined;
             this.nonce = undefined;
             this.sconf = undefined;
             this.d_i = undefined;
@@ -485,10 +489,14 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             }
 
             this.shutdown_received = {};
+
+            this.bd.session_keys = {};
         };
-        this.reset();
 
         this.broadcastOldBlue = (data) => {
+            data["data"] = this.encryptMessage(data["data"]);
+            data["key_id"] = this.bd.current_key_id;
+
             // OldBlue starts
             data["parentsIDs"] = this.frontier.slice();
             data["messageID"] = sha256.hex(
@@ -551,13 +559,11 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         };
 
         this.sendMessage = function (text) {
-            let encryptedText = this.encryptMessage(text);
-
             let data = {};
             data["type"] = $_.MSG.MPOTR_CHAT;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
-            data["data"] = encryptedText;
+            data["data"] = text;
 
             this.broadcastOldBlue(data);
         };
@@ -646,10 +652,11 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         };
 
         this.deliverMessage = (msg) => {
+            let text = this.decryptMessage(msg["data"], msg["key_id"]);
+
             switch (msg["type"]) {
 
                 case $_.MSG.MPOTR_CHAT:
-                    let text = this.decryptMessage(msg["data"]);
                     let author = msg["from"];
                     this.client.writeToChat(author, text);
                     utils.log("info", "got \"" + text + "\" from " + author);
@@ -661,14 +668,18 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                         return;
                     }
 
-                    if (this.receiveShutdown(msg["from"], msg["data"])) {
+                    if (this.receiveShutdown(msg["from"], text)) {
                         $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
                         utils.log("info", "mpOTRContext reset");
                     }
                 break;
 
                 case $_.MSG.BD_KEY_RATCHET:
-                    this.bd.handleBDMessage(msg);
+                    let round = msg["round"];
+                    let from = msg["from"];
+                    let new_key_id = msg["new_key_id"];
+
+                    this.bd.handleBDMessage(round, from, text, new_key_id);
                 break;
 
                 default:
@@ -676,17 +687,20 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                     utils.log("info", msg);
             }
 
-            $_.ee.emitEvent($_.EVENTS.OLDBLUE_MSG_DELIVERED, [msg]);
+            // It is senseless to notify about message delivery after successful shutdown
+            if ([$_.STATUS.UNENCRYPTED, $_.STATUS.AUTH].indexOf(this.status) === -1) {
+                $_.ee.emitEvent($_.EVENTS.OLDBLUE_MSG_DELIVERED, [msg]);
+            }
         };
 
-        this.decryptMessage = function (text) {
-            return cryptico.decryptAESCBC(text, this.sessionKey.slice(0, 32));
+        this.decryptMessage = function (text, key_id) {
+            return cryptico.decryptAESCBC(text, this.bd.session_keys[key_id].key);
         };
 
         this.encryptMessage = function (text) {
             return cryptico.encryptAESCBC(
                 text,
-                this.sessionKey.slice(0, 32)
+                this.bd.session_keys[this.bd.current_key_id].key
             );
         };
 
@@ -753,13 +767,11 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             // TODO: think about keylength 64
             let secret = `p=${this.myEphPrivKey.p}, q=${this.myEphPrivKey.q}, e=${this.myEphPrivKey.e}`;
 
-            let encryptedText = this.encryptMessage(secret);
-
             let data = {};
             data["type"] = $_.MSG.MPOTR_SHUTDOWN;
             data["from"] = this.client.peer.id;
             data["sid"] = this.sid;
-            data["data"] = encryptedText;
+            data["data"] = secret;
 
             this.broadcastOldBlue(data);
 
@@ -775,7 +787,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 utils.log("info", `${from} was disconnected`);
             } else {
                 // TODO: Publish keys
-                utils.log("info", `shutdown from ${from} received: ${this.decryptMessage(keys)}`);
+                utils.log("info", `shutdown from ${from} received: ${keys}`);
             }
 
             this.shutdown_received[from] = true;
@@ -1066,7 +1078,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 type: $_.MSG.BD_KEY_RATCHET,
                 round: 1,
                 from: this.client.peer.id,
-                key_id: this.bd.current_key_id + 1,
+                new_key_id: this.bd.current_key_id + 1,
                 data: this.bd.ks[this.client.peer.id].toString()
             });
 
@@ -1079,18 +1091,14 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 type: $_.MSG.BD_KEY_RATCHET,
                 round: 2,
                 from: this.client.peer.id,
-                key_id: this.bd.current_key_id + 1,
+                new_key_id: this.bd.current_key_id + 1,
                 data: this.bd.Ks[this.client.peer.id].toString()
             });
 
             this.bd.sent_r2 = true;
         };
 
-        this.bd.handleBDMessage = (msg) => {
-            let round = msg["round"];
-            let from = msg["from"];
-            let data = msg["data"];
-            let key_id = msg["key_id"];
+        this.bd.handleBDMessage = (round, from, data, new_key_id) => {
             let left, right;
 
             // OldBlue self-delivery
@@ -1098,9 +1106,9 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 return;
             }
 
-            if (key_id !== this.bd.current_key_id + 1) {
-                // if less, ignore
-                // if more, looks like fuckup
+            if (new_key_id !== this.bd.current_key_id + 1) {
+                utils.log(`Got wrong key_id during Key Ratcheting: ` +
+                    `got ${new_key_id}, expected ${this.bd.current_key_id + 1}`);
                 return;
             }
 
@@ -1140,7 +1148,10 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                         }
 
                         this.bd.reset(true);
-                        utils.log('info', `shared_secret = ${shared_secret}`);
+                        this.bd.session_keys[new_key_id] = {
+                            key: sha256.hex(shared_secret.toString()).slice(0, 32),
+                            received_from: {}
+                        };
                     }
 
                     break;
@@ -1161,8 +1172,21 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
          * When messages_on_this_key > MAX_MSGS_ON_KEY
          * Key Ratcheting will start.
          */
-        $_.ee.addListener($_.EVENTS.OLDBLUE_MSG_DELIVERED, () => {
+        $_.ee.addListener($_.EVENTS.OLDBLUE_MSG_DELIVERED, (msg) => {
+            let key_id = msg["key_id"];
+            let from = msg["from"];
+
             this.bd.messages_on_this_key += 1;
+
+            this.bd.session_keys[key_id].received_from[from] = true;
+
+            if (Object.values(this.bd.session_keys[key_id].received_from).length === this.bd.n) {
+                for (let key_id_to_delete of Object.keys(this.bd.session_keys)) {
+                    if (key_id_to_delete < key_id) {
+                        delete this.bd.session_keys[key_id_to_delete];
+                    }
+                }
+            }
         });
 
         /**
@@ -1195,6 +1219,8 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 break;
             }
         }, 3000);
+
+        this.reset();
     }
 
     return mpOTRContext;
