@@ -551,11 +551,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         };
 
         this.sendMessage = function (text) {
-            // TODO: think about keylength 64
-            let encryptedText = cryptico.encryptAESCBC(
-                text,
-                this.sessionKey.slice(0, 32)
-            );
+            let encryptedText = this.encryptMessage(text);
 
             let data = {};
             data["type"] = $_.MSG.MPOTR_CHAT;
@@ -687,6 +683,13 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             return cryptico.decryptAESCBC(text, this.sessionKey.slice(0, 32));
         };
 
+        this.encryptMessage = function (text) {
+            return cryptico.encryptAESCBC(
+                text,
+                this.sessionKey.slice(0, 32)
+            );
+        };
+
         /**
          * Takes object, signs it and adds property 'sig'
          * @param {object} data Object to sign
@@ -750,10 +753,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             // TODO: think about keylength 64
             let secret = `p=${this.myEphPrivKey.p}, q=${this.myEphPrivKey.q}, e=${this.myEphPrivKey.e}`;
 
-            let encryptedText = cryptico.encryptAESCBC(
-                secret,
-                this.sessionKey.slice(0, 32)
-            );
+            let encryptedText = this.encryptMessage(secret);
 
             let data = {};
             data["type"] = $_.MSG.MPOTR_SHUTDOWN;
