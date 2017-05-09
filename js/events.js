@@ -37,8 +37,8 @@ define(['eventEmitter'], function (EventEmitter) {
 
         /**
          * Client's status
-         * IMPORTANT: If you want to add / remove STATUS consider
-         * rewriting all checkStatus() wrappers.
+         * IMPORTANT: If you want to modify STATUS (add, remove)
+         * consider rewriting all checkStatus() wrappers.
          */
         STATUS: {
             UNENCRYPTED:    "STATUS.UNENCRYPTED",

@@ -30,187 +30,188 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
             });
 
             this.peer.on('open', (id) => {
-                $_.ee.emitEvent($_.EVENTS.PEER_OPENED, [id]);
-            });
+                this.context = new mpOTRContext(this);
+                let context = this.context;
 
-            this.context = new mpOTRContext(this);
-            let context = this.context;
+                /**
+                 * Transport section:
+                 *
+                 * - connList.peers
+                 * - connList.add
+                 * - connList.remove
+                 * - action on peer's addition
+                 */
 
-            /**
-             * Transport section:
-             *
-             * - connList.peers
-             * - connList.add
-             * - connList.remove
-             * - action on peer's addition
-             */
-
-            /**
-             * Auxiliary list with peers' nicknames
-             */
-            if (!this.connList.peers) {
-                Object.defineProperty(this.connList, "peers", {
-                    value: []
-                })
-            }
-
-            /**
-             * this.connList.add - handles peer addition.
-             *
-             * This function is responsible for:
-             *
-             * - addition of a new peer to the connList;
-             * - duplicate removing;
-             * - emitting event CONN_LIST_ADD to notify other
-             * components about new peer;
-             * - corresponding modification of auxiliary list connList.peers.
-             */
-            if (!this.connList.add) {
-                Object.defineProperty(this.connList, "add", {
-                    value: function(newConn) {
-                        let idx = this.peers.indexOf(newConn.peer);
-
-                        if (idx === -1) {
-                            newConn.on('close', function() {
-                                handleDisconnect(this);
-                            });
-                            this.push(newConn);
-                            this.peers.push(newConn.peer);
-                            $_.ee.emitEvent($_.EVENTS.CONN_LIST_ADD, [newConn]);
-                        } else if (this[idx].id > newConn.id) {
-                            newConn.close();
-                        } else {
-                            this[idx].off("close");
-                            this[idx].close();
-                            this.splice(idx, 1);
-                            this.peers.splice(idx, 1);
-
-                            newConn.on('close', function() {
-                                handleDisconnect(this);
-                            });
-                            this.push(newConn);
-                            this.peers.push(newConn.peer);
-                        }
-                    }
-                });
-            }
-
-            /**
-             * this.connList.remove - handles peer removing.
-             *
-             * This function is responsible for:
-             * - removing a peer from connList
-             * - corresponding removing of a peer from auxiliary list connList.peers
-             * - emitting event CONN_LIST_REMOVE to notify other components about peer removal;
-             */
-            if (!this.connList.remove) {
-                Object.defineProperty(this.connList, "remove", {
-                    value: function(elem) {
-                        let idx = this.peers.indexOf(elem.peer);
-
-                        if (idx > -1) {
-                            this.splice(idx, 1);
-                            this.peers.splice(idx, 1);
-                            $_.ee.emitEvent($_.EVENTS.CONN_LIST_REMOVE, [elem]);
-
-                            return elem;
-                        }
-
-                        return undefined;
-                    }
-                });
-            }
-
-            /**
-             * Action on new connection in unencrypted phase
-             */
-            $_.ee.addListener($_.EVENTS.NEW_CONN, context.checkStatus([$_.STATUS.UNENCRYPTED], (conn) => {
-                this.addPeer(conn);
-            }));
-
-            /**
-             * Action on new connection in mpotr phases: authentication, communication, shutdown
-             */
-            $_.ee.addListener($_.EVENTS.NEW_CONN, context.checkStatus([$_.STATUS.AUTH, $_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (conn) => {
-                if (conn.open) {
-                    conn.close()
-                } else {
-                    conn.on('open', () => {
-                        conn.close();
+                /**
+                 * Auxiliary list with peers' nicknames
+                 */
+                if (!this.connList.peers) {
+                    Object.defineProperty(this.connList, "peers", {
+                        value: []
                     })
                 }
-            }));
 
-            /**
-             * Action on peer's addition: send my connections to
-             * the new participant.
-             */
-            $_.ee.addListener($_.EVENTS.CONN_LIST_ADD, (conn) => {
-                conn.send({
-                    "type": $_.MSG.CONN_LIST_SYNC,
-                    "data": this.connList.peers
+                /**
+                 * this.connList.add - handles peer addition.
+                 *
+                 * This function is responsible for:
+                 *
+                 * - addition of a new peer to the connList;
+                 * - duplicate removing;
+                 * - emitting event CONN_LIST_ADD to notify other
+                 * components about new peer;
+                 * - corresponding modification of auxiliary list connList.peers.
+                 */
+                if (!this.connList.add) {
+                    Object.defineProperty(this.connList, "add", {
+                        value: function(newConn) {
+                            let idx = this.peers.indexOf(newConn.peer);
+
+                            if (idx === -1) {
+                                newConn.on('close', function() {
+                                    handleDisconnect(this);
+                                });
+                                this.push(newConn);
+                                this.peers.push(newConn.peer);
+                                $_.ee.emitEvent($_.EVENTS.CONN_LIST_ADD, [newConn]);
+                            } else if (this[idx].id > newConn.id) {
+                                newConn.close();
+                            } else {
+                                this[idx].off("close");
+                                this[idx].close();
+                                this.splice(idx, 1);
+                                this.peers.splice(idx, 1);
+
+                                newConn.on('close', function() {
+                                    handleDisconnect(this);
+                                });
+                                this.push(newConn);
+                                this.peers.push(newConn.peer);
+                            }
+                        }
+                    });
+                }
+
+                /**
+                 * this.connList.remove - handles peer removing.
+                 *
+                 * This function is responsible for:
+                 * - removing a peer from connList
+                 * - corresponding removing of a peer from auxiliary list connList.peers
+                 * - emitting event CONN_LIST_REMOVE to notify other components about peer removal;
+                 */
+                if (!this.connList.remove) {
+                    Object.defineProperty(this.connList, "remove", {
+                        value: function(elem) {
+                            let idx = this.peers.indexOf(elem.peer);
+
+                            if (idx > -1) {
+                                this.splice(idx, 1);
+                                this.peers.splice(idx, 1);
+                                $_.ee.emitEvent($_.EVENTS.CONN_LIST_REMOVE, [elem]);
+
+                                return elem;
+                            }
+
+                            return undefined;
+                        }
+                    });
+                }
+
+                /**
+                 * Action on new connection in unencrypted phase
+                 */
+                $_.ee.addListener($_.EVENTS.NEW_CONN, context.checkStatus([$_.STATUS.UNENCRYPTED], (conn) => {
+                    this.addPeer(conn);
+                }));
+
+                /**
+                 * Action on new connection in mpotr phases: authentication, communication, shutdown
+                 */
+                $_.ee.addListener($_.EVENTS.NEW_CONN, context.checkStatus([$_.STATUS.AUTH, $_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (conn) => {
+                    if (conn.open) {
+                        conn.close()
+                    } else {
+                        conn.on('open', () => {
+                            conn.close();
+                        })
+                    }
+                }));
+
+                /**
+                 * Action on peer's addition: send my connections to
+                 * the new participant.
+                 */
+                $_.ee.addListener($_.EVENTS.CONN_LIST_ADD, (conn) => {
+                    conn.send({
+                        "type": $_.MSG.CONN_LIST_SYNC,
+                        "data": this.connList.peers
+                    });
                 });
-            });
 
-            /**
-             * On removing conn - send message
-             */
-            $_.ee.addListener($_.EVENTS.CONN_LIST_REMOVE, (conn) => {
-                this.sendMessage(conn.peer, $_.MSG.CONN_LIST_REMOVE);
-            });
+                /**
+                 * On removing conn - send message
+                 */
+                $_.ee.addListener($_.EVENTS.CONN_LIST_REMOVE, (conn) => {
+                    this.sendMessage(conn.peer, $_.MSG.CONN_LIST_REMOVE);
+                });
 
-            /**
-             * Add peers got from new connections
-             */
-            $_.ee.addListener($_.MSG.CONN_LIST_SYNC, (conn, data) => {
-                if (context.status !== $_.STATUS.UNENCRYPTED) {
-                    utils.log('info', 'Got connection pool synchronization during non-unencrypted phase');
-                } else {
+                /**
+                 * Add peers got from new connections
+                 */
+                $_.ee.addListener($_.MSG.CONN_LIST_SYNC, context.checkStatus([$_.STATUS.UNENCRYPTED], (conn, data) => {
                     for (let peer of data["data"]) {
                         client.addPeer(peer);
                     }
-                }
+                }));
+
+                /**
+                 * Incoming message to delete lost connections
+                 */
+                $_.ee.addListener($_.MSG.CONN_LIST_REMOVE, context.checkStatus([
+                    $_.STATUS.UNENCRYPTED,
+                    $_.STATUS.AUTH,
+                    $_.STATUS.MPOTR,
+                    $_.STATUS.SHUTDOWN
+                ], (conn, data) => {
+                    client.closePeerByName(data["data"]);
+                }));
+
+                /**
+                 * End of transport section
+                 */
+
+                /**
+                 * Block chat section
+                 */
+
+                /**
+                 * Unblock chat when shutdown phase ends
+                 */
+                $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
+                    client.blockChat = false;
+                });
+
+                /**
+                 * Block chat. At the moment is used while shutdown phase is running
+                 */
+                $_.ee.addListener($_.EVENTS.BLOCK_CHAT, () => {
+                    client.blockChat = true;
+                });
+
+                /**
+                 * End of block chat section
+                 */
+
+                /**
+                 * Handler for unencrypted messages
+                 */
+                $_.ee.addListener($_.MSG.UNENCRYPTED, context.checkStatus([$_.STATUS.UNENCRYPTED], (conn, data) => {
+                    client.writeToChat(conn.peer, data["data"]);
+                }));
+
+                $_.ee.emitEvent($_.EVENTS.PEER_OPENED, [id]);
             });
-
-            /**
-             * Incoming message to delete lost connections
-             */
-            $_.ee.addListener($_.MSG.CONN_LIST_REMOVE, (conn, data) => {
-                client.closePeerByName(data["data"]);
-            });
-
-            /**
-             * End of transport section
-             */
-
-            /**
-             * Block chat section
-             */
-
-            /**
-             * Unblock chat when shutdown phase ends
-             */
-            $_.ee.addListener($_.EVENTS.MPOTR_SHUTDOWN_FINISH, () => {
-                client.blockChat = false;
-            });
-
-            /**
-             * Block chat. At the moment is used while shutdown phase is running
-             */
-            $_.ee.addListener($_.EVENTS.BLOCK_CHAT, () => {
-                client.blockChat = true;
-            });
-
-            /**
-             * End of block chat section
-             */
-
-            /**
-             * Handler for unencrypted messages
-             */
-            $_.ee.addListener($_.MSG.UNENCRYPTED, context.checkStatus([$_.STATUS.UNENCRYPTED], (conn, data) => {
-                client.writeToChat(conn.peer, data["data"]);
-            }));
         },
 
         /**

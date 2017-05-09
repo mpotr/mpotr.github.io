@@ -445,7 +445,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         this.start = function() {
             if (this.client.connList.length > 0) {
                 this.client.sendMessage(["init"], $_.MSG.MPOTR_INIT);
-                $_.ee.emitEvent($_.EVENTS.MPOTR_INIT);
+                this.mpOTRInit();
             } else {
                 utils.log('alert', "No peers were added");
                 $_.ee.emitEvent($_.EVENTS.MPOTR_SHUTDOWN_FINISH);
@@ -489,6 +489,9 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             }
 
             this.shutdown_received = {};
+            for (let peer of this.client.connList.peers) {
+                this.shutdown_received[peer] = false;
+            }
 
             this.bd.session_keys = {};
         };
@@ -804,6 +807,24 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             this.sendShutdown();
         };
 
+        this.mpOTRInit = () => {
+            this.reset();
+            this.bd.reset();
+
+            this.status = $_.STATUS.AUTH;
+
+            // Initiating authentication phase
+            let authenticationPhase = this.InitAuthenticationPhase();
+
+            authenticationPhase.then(() => {
+                utils.log('info', 'Success!');
+            }).catch((err) => {
+                utils.log('alert', err);
+            });
+
+            $_.ee.emitEvent($_.EVENTS.MPOTR_INIT);
+        };
+
         // Change status on start of chat
         $_.ee.addListener($_.EVENTS.MPOTR_START, () => {
             this.status = $_.STATUS.MPOTR;
@@ -816,32 +837,18 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
 
         // Init received! Checking current chat status and starting new one!
         $_.ee.addListener($_.MSG.MPOTR_INIT, this.checkStatus([$_.STATUS.UNENCRYPTED], (conn, data) => {
-            $_.ee.emitEvent($_.EVENTS.MPOTR_INIT, [conn, data]);
+            this.mpOTRInit();
         }));
 
-        $_.ee.addListener($_.EVENTS.MPOTR_INIT, (conn, data) => {
-            for (let peer of this.client.connList.peers) {
-                this.shutdown_received[peer] = false;
-            }
-
-            // Initiating authentication phase
-            let authenticationPhase = this.InitAuthenticationPhase();
-
-            authenticationPhase.then(() => {
-                utils.log('info', 'Success!');
-            }).catch((err) => {
-                utils.log('alert', err);
-            });
-        });
-
-        $_.ee.addListener($_.MSG.MPOTR_CHAT, (_, data) => {
+        $_.ee.addListener($_.MSG.MPOTR_CHAT, this.checkStatus([$_.STATUS.MPOTR], (_, data) => {
             this.receiveMessage(data);
-        });
-        $_.ee.addListener($_.MSG.MPOTR_SHUTDOWN, (_, data) => {
-            this.receiveMessage(data);
-        });
+        }));
 
-        $_.ee.addListener($_.MSG.MPOTR_LOST_MSG, (conn, data) => {
+        $_.ee.addListener($_.MSG.MPOTR_SHUTDOWN, this.checkStatus([$_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (_, data) => {
+            this.receiveMessage(data);
+        }));
+
+        $_.ee.addListener($_.MSG.MPOTR_LOST_MSG, this.checkStatus([$_.STATUS.MPOTR], (conn, data) => {
             if (!this.checkSig(data, conn.peer)) {
                 utils.log('alert', "Signature check fail");
                 return;
@@ -852,7 +859,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             if (response) {
                 conn.send(response);
             }
-        });
+        }));
 
         $_.ee.addListener($_.EVENTS.CONN_LIST_REMOVE, this.checkStatus([$_.STATUS.MPOTR, $_.STATUS.SHUTDOWN], (conn) => {
             if (this.client.amILeader()) {
@@ -885,7 +892,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
             // TODO: Move timeout to client or context
             let timeout = 10 * 1000;
 
-            let authMessageListener = (conn, data) => {
+            let authMessageListener = this.checkStatus([$_.STATUS.AUTH], (conn, data) => {
                 let payload = data["data"];
                 // Check Message
                 let processMessage = (conn, data) => {
@@ -904,8 +911,6 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                             if (!this.rounds[currentRound].send()) {
                                 return false
                             }
-
-                            this.status = $_.STATUS.AUTH;
 
                             // Process the whole queue
                             for (let msg of roundsQueue[currentRound]) {
@@ -936,7 +941,7 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 } else {
                     fail("Wrong round number");
                 }
-            };
+            });
 
             /**
              * Dict with error/success callbacks
@@ -1192,9 +1197,9 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
         /**
          * OldBlue listener for Key Ratcheting messages
          */
-        $_.ee.addListener($_.MSG.BD_KEY_RATCHET, (_, data) => {
+        $_.ee.addListener($_.MSG.BD_KEY_RATCHET, this.checkStatus([$_.STATUS.MPOTR], (_, data) => {
             this.receiveMessage(data);
-        });
+        }));
 
         /**
          * Daemon.
@@ -1219,8 +1224,6 @@ define(['jquery', 'utils', 'events', 'cryptico'], function($, utils, $_) {
                 break;
             }
         }, 3000);
-
-        this.reset();
     }
 
     return mpOTRContext;
