@@ -24,7 +24,11 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
         init: function (peerID, writeFunc) {
             this.writeToChat = writeFunc;
 
-            this.peer = new Peer(peerID, {key: '2bmv587i7jru23xr'});
+            this.peer = new Peer(peerID, {
+                    host  : "mpotr-tracker.herokuapp.com",
+                    port  : 443,
+                    secure: true
+                });
             this.peer.on('connection', function (conn) {
                 $_.ee.emitEvent(($_.EVENTS.NEW_CONN), [conn]);
             });
