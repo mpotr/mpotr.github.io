@@ -364,8 +364,12 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
      * @param {Object} data message received
      */
     function handleMessage(data) {
-        $_.ee.emitEvent($_.EVENTS.INCOMING_MSG, [this, data]);
-        $_.ee.emitEvent(data["type"], [this, data]);
+        if (Object.values($_.MSG).indexOf(data["type"]) > -1) {
+            $_.ee.emitEvent($_.EVENTS.INCOMING_MSG, [this, data]);
+            $_.ee.emitEvent(data["type"], [this, data]);
+        } else {
+            utils.log("info", `Got unknown message type: ${data["type"]}`);
+        }
     }
 
     /**
