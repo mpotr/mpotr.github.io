@@ -8,6 +8,9 @@ define(['eventEmitter'], function (EventEmitter) {
          */
         EVENTS: {
             PEER_OPENED: 'EVENTS.PEER_OPENED',
+            PEER_DISCONNECTED: 'EVENTS.PEER_DISCONNECTED',
+            PEER_CLOSED: 'EVENTS.PEER_CLOSED',
+            PEER_ERROR: 'EVENTS.PEER_ERROR',
             NEW_CONN: 'EVENTS.NEW_CONN',
             MPOTR_INIT: 'EVENTS.MPOTR_INIT',
             MPOTR_START: 'EVENTS.MPOTR_START',

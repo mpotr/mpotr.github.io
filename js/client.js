@@ -29,6 +29,7 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                     port  : 443,
                     secure: true
                 });
+
             this.peer.on('connection', function (conn) {
                 $_.ee.emitEvent(($_.EVENTS.NEW_CONN), [conn]);
             });
@@ -215,6 +216,20 @@ define(['crypto', 'utils', 'events', 'peerjs'], function(mpOTRContext, utils, $_
                 }));
 
                 $_.ee.emitEvent($_.EVENTS.PEER_OPENED, [id]);
+            });
+
+            this.peer.on("disconnected", () => {
+                $_.ee.emitEvent($_.EVENTS.PEER_DISCONNECTED, []);
+                // Trying to reconnect() to the server
+                this.peer.reconnect();
+            });
+
+            this.peer.on("close", () => {
+                $_.ee.emitEvent($_.EVENTS.PEER_CLOSED, []);
+            });
+
+            this.peer.on("error", (err) => {
+                $_.ee.emitEvent($_.EVENTS.PEER_ERROR, [err]);
             });
         },
 
